@@ -5,3 +5,4 @@ export * from "./stateMachine.ts";
 export * from "./verification.ts";
 export * from "./acceptance.ts";
 export * from "./imagem.ts";
+export * from "./avaliacao.ts";

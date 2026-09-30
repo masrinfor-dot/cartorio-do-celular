@@ -2,6 +2,11 @@
 // o Supabase (Edge Functions). A interface só conhece este contrato.
 
 import type {
+  Estimativa,
+  Margens,
+  QuestionarioConfig,
+  TabelaMargem,
+  ValorBase,
   AcceptanceGrade,
   AcceptanceStatus,
   CheckOutcome,
@@ -163,6 +168,116 @@ export interface EstoqueItem {
   protocolo_entrada: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Avaliação de usados / compra (portado do Sheik CRM), PDV e integração ERP
+// ---------------------------------------------------------------------------
+
+export interface ErpConfig {
+  ativo: boolean;
+  url: string;
+  token_definido: boolean;
+  enviar_compras: boolean;
+  enviar_vendas: boolean;
+  solicitar_nfe: boolean;
+}
+
+export interface AvaliacaoConfig {
+  margens: Margens;
+  questionario: QuestionarioConfig;
+  formas_pagamento: string[];
+  valores_base: Array<ValorBase & { id: string }>;
+  /** true quando há chave de IA configurada no servidor (pesquisa de preço). */
+  ia_disponivel: boolean;
+  erp: ErpConfig;
+}
+
+export interface AvaliacaoView {
+  id: string;
+  created_at: string;
+  brand: string;
+  model: string;
+  memory: string | null;
+  color: string | null;
+  /** Texto composto: "Apple iPhone 13 128GB Azul". */
+  device: string;
+  customer_name: string | null;
+  answers: Record<string, string>;
+  estimativa: Estimativa | null;
+  margem_tabela: TabelaMargem;
+  // Fechamento (negócio fechado = compra)
+  closed_at: string | null;
+  final_price_centavos: number | null;
+  payment_method: string | null;
+  pix_key: string | null;
+  pix_key_holder: string | null;
+  seller_party_id: string | null;
+  seller_display_name: string | null;
+  seller_telefone_mascarado: string | null;
+  device_id: string | null;
+  imei_mascarado: string | null;
+  imei_pendente: boolean;
+  transaction_id: string | null;
+  transaction_state: TransactionState | null;
+  protocolo: string | null;
+  aceite_grade: AcceptanceGrade | null;
+  store_name: string | null;
+}
+
+export interface FecharNegocio {
+  vendedor: { nome: string; cpf: string; telefone: string; rg?: string; endereco?: string; bairro?: string };
+  imei?: string;
+  final_price_centavos: number;
+  payment_method: string;
+  pix_key?: string;
+  pix_key_holder?: string;
+  tabela: TabelaMargem;
+}
+
+export interface NotaCompra {
+  protocolo: string | null;
+  registro_estado: TransactionState | null;
+  aceite_grade: AcceptanceGrade | null;
+  concluido_em: string | null;
+  loja: { nome: string; cnpj: string; cidade: string | null };
+  data: string;
+  aparelho: { descricao: string; marca: string; modelo: string; memoria: string | null; cor: string | null; imei: string | null };
+  vendedor: { nome: string; cpf: string; rg: string | null; endereco: string | null; bairro: string | null; telefone: string | null };
+  valor: string;
+  forma_pagamento: string;
+  pix_key: string | null;
+  pix_key_holder: string | null;
+  checklist: Array<{ pergunta: string; resposta: string }>;
+  fotos: { documento: string[]; aparelho: string[]; comprovante: string[] };
+  link_certificado: string | null;
+}
+
+export interface NotaVenda {
+  protocolo: string;
+  aceite_grade: AcceptanceGrade;
+  concluido_em: string;
+  loja: { nome: string; cnpj: string; cidade: string | null };
+  aparelho: { descricao: string; imei: string };
+  comprador: { nome: string; cpf: string; telefone: string | null };
+  valor: string;
+  forma_pagamento: string;
+  garantia: string;
+  estado_declarado: string;
+  defeitos_declarados: string;
+  consulta: { resultado: string; fonte: string; data: string } | null;
+  link_certificado: string;
+}
+
+export interface ErpEnvio {
+  id: string;
+  transaction_id: string;
+  tipo: "compra" | "venda";
+  status: "enviado" | "erro" | "simulado";
+  erp_ref: string | null;
+  nfe_status: string | null;
+  mensagem: string | null;
+  created_at: string;
+}
+
 export interface RegistryApi {
   readonly modo: "demo" | "supabase";
 
@@ -240,5 +355,34 @@ export interface RegistryApi {
   publico: {
     passaporte(imei: string): Promise<PassaporteResultado>;
     certificado(protocolo: string): Promise<CertificadoView | null>;
+  };
+
+  avaliacao: {
+    config(): Promise<AvaliacaoConfig>;
+    salvarConfig(patch: {
+      margens?: Margens;
+      questionario?: QuestionarioConfig;
+      formas_pagamento?: string[];
+      valores_base_texto?: string;
+      erp?: Partial<ErpConfig> & { token?: string };
+    }): Promise<AvaliacaoConfig>;
+    removerValorBase(id: string): Promise<void>;
+    /** Etapas 1–3: cria a avaliação (orçamento) e calcula a sugestão. */
+    estimar(dados: { brand: string; model: string; memory: string; color: string; customer_name: string; answers: Record<string, string>; tabela: TabelaMargem; imei?: string }): Promise<AvaliacaoView>;
+    listar(): Promise<AvaliacaoView[]>;
+    obter(id: string): Promise<AvaliacaoView>;
+    /** Etapa 4: fecha o negócio → cria pessoa, aparelho, transação e termos do Cartório. */
+    fechar(id: string, dados: FecharNegocio): Promise<AvaliacaoView>;
+    completarImei(id: string, imei: string): Promise<AvaliacaoView>;
+    /** Só antes da conclusão do registro (o lastro é append-only). */
+    excluir(id: string): Promise<void>;
+    notaCompra(id: string): Promise<NotaCompra>;
+  };
+
+  notaVenda(transaction_id: string): Promise<NotaVenda>;
+
+  erp: {
+    enviar(transaction_id: string): Promise<ErpEnvio>;
+    envios(transaction_id: string): Promise<ErpEnvio[]>;
   };
 }

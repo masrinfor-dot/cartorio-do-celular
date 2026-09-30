@@ -19,7 +19,7 @@ export function NovaLoja() {
     try {
       await api.loja.criar(f);
       await recarregar();
-      nav("/balcao");
+      nav("/avaliacao");
     } catch (err) {
       setErro(mensagemDeErro(err));
     } finally {

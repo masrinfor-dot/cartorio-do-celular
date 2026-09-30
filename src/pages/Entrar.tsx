@@ -20,7 +20,7 @@ export function Entrar() {
     try {
       const s = modo === "entrar" ? await api.auth.signIn(email, senha) : await api.auth.signUp(email, senha);
       await recarregar();
-      nav(s.store ? "/balcao" : "/loja/nova");
+      nav(s.store ? "/avaliacao" : "/loja/nova");
     } catch (err) {
       setErro(mensagemDeErro(err));
     } finally {

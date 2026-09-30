@@ -17,10 +17,12 @@ export function Layout() {
           </NavLink>
           {sessao?.store && (
             <nav className="hidden sm:flex items-center gap-1 ml-2">
-              <NavLink to="/balcao" className={link}>Balcão</NavLink>
+              <NavLink to="/avaliacao" className={link}>Comprar</NavLink>
+              <NavLink to="/estoque" className={link}>Vender (PDV)</NavLink>
+              <NavLink to="/compras" className={link}>Compras</NavLink>
               <NavLink to="/registros" className={link}>Registros</NavLink>
-              <NavLink to="/estoque" className={link}>Estoque</NavLink>
               <NavLink to="/passaporte" className={link}>Consultar</NavLink>
+              <NavLink to="/configuracoes" className={link}>Config</NavLink>
               {MODO_DEMO && <NavLink to="/demo/celular" className={link}>📱 Celular do cliente</NavLink>}
             </nav>
           )}
@@ -34,10 +36,12 @@ export function Layout() {
         </div>
         {sessao?.store && (
           <nav className="sm:hidden flex gap-1 overflow-x-auto px-3 pb-2">
-            <NavLink to="/balcao" className={link}>Balcão</NavLink>
+            <NavLink to="/avaliacao" className={link}>Comprar</NavLink>
+            <NavLink to="/estoque" className={link}>Vender</NavLink>
+            <NavLink to="/compras" className={link}>Compras</NavLink>
             <NavLink to="/registros" className={link}>Registros</NavLink>
-            <NavLink to="/estoque" className={link}>Estoque</NavLink>
             <NavLink to="/passaporte" className={link}>Consultar</NavLink>
+            <NavLink to="/configuracoes" className={link}>Config</NavLink>
             {MODO_DEMO && <NavLink to="/demo/celular" className={link}>📱 Celular</NavLink>}
           </nav>
         )}

@@ -30,9 +30,12 @@ export type MediaSlot =
   | "laterais"
   | "avarias"
   | "documento"
-  | "selfie";
+  | "selfie"
+  | "comprovante";
 
 export const REQUIRED_MEDIA_SLOTS: MediaSlot[] = ["frente_ligada", "traseira", "tela_imei"];
+/** Slots únicos por transação (reenviar substitui); os demais aceitam várias fotos. */
+export const UNIQUE_MEDIA_SLOTS: MediaSlot[] = ["frente_ligada", "traseira", "tela_imei"];
 
 export type PartyRole = "seller" | "buyer" | "representative" | "witness";
 

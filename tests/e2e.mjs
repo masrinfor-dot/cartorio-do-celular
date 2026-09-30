@@ -36,7 +36,8 @@ try {
   await page.fill("#cidade", "Teófilo Otoni");
   await page.fill("#uf", "MG");
   await page.click("button[type=submit]");
-  await page.waitForURL("**/balcao");
+  await page.waitForURL("**/avaliacao");
+  await page.goto(BASE + "/balcao");
   ok("loja criada");
   await shot("01-balcao");
 
@@ -132,7 +133,7 @@ try {
 
   // revenda PJ→PF
   await page.goto(BASE + "/estoque");
-  await page.getByRole("button", { name: "Revender" }).click();
+  await page.getByRole("button", { name: "Vender" }).click();
   await page.waitForSelector("#cpf");
   await page.fill("#cpf", "111.444.777-35");
   await page.waitForSelector("#nome:not([disabled])");

@@ -106,6 +106,23 @@ export const supabaseApi: RegistryApi = {
     listar: () => fn("transacao", { op: "estoque" }),
     partyDaLoja: () => fn("loja", { op: "party" }),
   },
+  avaliacao: {
+    config: () => fn("avaliacao", { op: "config" }),
+    salvarConfig: (patch) => fn("avaliacao", { op: "salvar_config", ...patch }),
+    removerValorBase: (id) => fn("avaliacao", { op: "remover_valor_base", id }),
+    estimar: (dados) => fn("avaliacao", { op: "estimar", ...dados }),
+    listar: () => fn("avaliacao", { op: "listar" }),
+    obter: (id) => fn("avaliacao", { op: "obter", id }),
+    fechar: (id, dados) => fn("avaliacao", { op: "fechar", id, ...dados }),
+    completarImei: (id, imei) => fn("avaliacao", { op: "completar_imei", id, imei }),
+    excluir: (id) => fn("avaliacao", { op: "excluir", id }),
+    notaCompra: (id) => fn("avaliacao", { op: "nota_compra", id }),
+  },
+  notaVenda: (transaction_id) => fn("avaliacao", { op: "nota_venda", transaction_id }),
+  erp: {
+    enviar: (transaction_id) => fn("erp", { op: "enviar", transaction_id }),
+    envios: (transaction_id) => fn("erp", { op: "envios", transaction_id }),
+  },
   publico: {
     async passaporte(imei) {
       const { data, error } = await sb().rpc("public_device_passport", { p_imei: imei.replace(/\D/g, "") });

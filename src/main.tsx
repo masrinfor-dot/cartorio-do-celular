@@ -15,6 +15,10 @@ import { Aceite } from "@/pages/Aceite.tsx";
 import { Passaporte } from "@/pages/Passaporte.tsx";
 import { Certificado } from "@/pages/Certificado.tsx";
 import { DemoCelular } from "@/pages/DemoCelular.tsx";
+import { Avaliacao } from "@/pages/Avaliacao.tsx";
+import { Compras } from "@/pages/Compras.tsx";
+import { NotaCompra, NotaVenda } from "@/pages/Notas.tsx";
+import { Configuracoes } from "@/pages/Configuracoes.tsx";
 
 function Protegida() {
   const { sessao, carregando } = useSession();
@@ -27,7 +31,7 @@ function Protegida() {
 function Inicio() {
   const { sessao, carregando } = useSession();
   if (carregando) return <Carregando />;
-  return <Navigate to={sessao?.store ? "/balcao" : sessao ? "/loja/nova" : "/entrar"} replace />;
+  return <Navigate to={sessao?.store ? "/avaliacao" : sessao ? "/loja/nova" : "/entrar"} replace />;
 }
 
 createRoot(document.getElementById("root")!).render(
@@ -37,6 +41,11 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           {/* Pública, sem layout e sem sessão: o cliente abre no celular dele */}
           <Route path="/aceite/:token" element={<Aceite />} />
+          {/* Notas para impressão: sem layout */}
+          <Route element={<Protegida />}>
+            <Route path="/compras/:id/nota" element={<NotaCompra />} />
+            <Route path="/vendas/:txId/nota" element={<NotaVenda />} />
+          </Route>
           <Route element={<Layout />}>
             <Route index element={<Inicio />} />
             <Route path="/entrar" element={<Entrar />} />
@@ -45,6 +54,10 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/passaporte/:imei" element={<Passaporte />} />
             <Route path="/certificado/:protocolo" element={<Certificado />} />
             <Route element={<Protegida />}>
+              <Route path="/avaliacao" element={<Avaliacao />} />
+              <Route path="/compras" element={<Compras />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/pdv/:deviceId" element={<FluxoTransacao kind="pj_pf" />} />
               <Route path="/balcao" element={<FluxoTransacao kind="pf_pj" />} />
               <Route path="/revenda" element={<FluxoTransacao kind="pj_pf" />} />
               <Route path="/revenda/:deviceId" element={<FluxoTransacao kind="pj_pf" />} />

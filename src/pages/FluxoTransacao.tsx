@@ -22,6 +22,7 @@ import { Aviso, Botao, Campo, Carregando, Erro, Rotulo, Selo, formatarData, mmss
 import { META_MS, useCronometro } from "@/lib/cronometro.ts";
 import { mensagemDeErro, useSession } from "@/lib/session.tsx";
 import { demoAdmin } from "@/api/demo.ts";
+import { EnviarErp } from "@/components/EnviarErp.tsx";
 
 type Etapa = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const NOMES_ETAPA: Record<Etapa, string> = { 1: "Pessoa", 2: "Aparelho", 3: "Consulta", 4: "Fotos", 5: "Condições", 6: "Aceite", 7: "Concluído" };
@@ -130,8 +131,8 @@ export function FluxoTransacao({ kind }: { kind: Extract<TransactionKind, "pf_pj
       {/* Cabeçalho com cronômetro */}
       <div className="mb-4 flex items-center gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">{kind === "pf_pj" ? "Entrada no balcão" : "Revenda"}</h1>
-          <p className="text-xs text-slate-500">{kind === "pf_pj" ? "Pessoa vende para a loja · primeiro elo" : "Loja vende para pessoa · segundo elo"}</p>
+          <h1 className="text-2xl font-black tracking-tight">{kind === "pf_pj" ? "Registro rápido" : "PDV — Venda"}</h1>
+          <p className="text-xs text-slate-500">{kind === "pf_pj" ? "Pessoa vende para a loja · sem avaliação · primeiro elo" : "Loja vende para pessoa · transferência de titularidade · segundo elo"}</p>
         </div>
         <div className={`ml-auto rounded-lg px-3 py-1.5 font-mono text-2xl font-bold tabular-nums ${crono.parado ? "bg-slate-200 text-slate-700" : dentroDaMeta ? "bg-slate-900 text-white" : "bg-red-700 text-white"}`} title="Trabalho ativo do operador. Para quando o convite é enviado.">
           {mmss(crono.decorrido)}
@@ -229,7 +230,8 @@ export function FluxoTransacao({ kind }: { kind: Extract<TransactionKind, "pf_pj
           )}
           <div className="flex flex-wrap justify-center gap-3">
             <Link to={`/certificado/${tx.public_protocol}`}><Botao variante="secundario">Ver certificado</Botao></Link>
-            {tx.device && <Link to={`/passaporte?imei=${tx.device.device_id}`} className="hidden" />}
+            {kind === "pj_pf" && <Link to={`/vendas/${tx.id}/nota`}><Botao variante="secundario">Nota de venda</Botao></Link>}
+            <EnviarErp transaction_id={tx.id} />
             <Botao onClick={() => { crono.zerar(); nav(kind === "pf_pj" ? "/balcao" : "/estoque"); setEtapa(1); setPessoa(null); setAparelho(null); setTx(null); setConclusao(null); idemCriar.current = uuid(); idemConcluir.current = uuid(); }}>
               {kind === "pf_pj" ? "Registrar outra entrada" : "Voltar ao estoque"}
             </Botao>
@@ -384,7 +386,7 @@ function EtapaAparelho({ ocupado, executar, onVoltar, onPronto }: { ocupado: boo
 // ---------------------------------------------------------------------------
 // Etapa 3 — Consulta de procedência
 // ---------------------------------------------------------------------------
-function EtapaConsulta({ tx, ocupado, onVoltar, onConsultar, onSeguir }: { tx: TransacaoView; ocupado: boolean; onVoltar?: () => void; onConsultar: () => Promise<void>; onSeguir: () => void }) {
+export function EtapaConsulta({ tx, ocupado, onVoltar, onConsultar, onSeguir, ocultarContinuar }: { tx: TransacaoView; ocupado: boolean; onVoltar?: () => void; onConsultar: () => Promise<void>; onSeguir: () => void; ocultarContinuar?: boolean }) {
   const rodou = useRef(false);
   useEffect(() => { if (!tx.check && !rodou.current) { rodou.current = true; onConsultar(); } }, [tx.check, onConsultar]);
   const d = descreverConsulta(tx.check);
@@ -401,7 +403,7 @@ function EtapaConsulta({ tx, ocupado, onVoltar, onConsultar, onSeguir }: { tx: T
       <div className="flex gap-3">
         {onVoltar && <Botao type="button" variante="secundario" onClick={onVoltar}>Voltar</Botao>}
         {!liberado && tx.state !== "blocked" && <Botao type="button" variante="secundario" onClick={onConsultar} disabled={ocupado}>Consultar de novo</Botao>}
-        <Botao type="button" className="flex-1" onClick={onSeguir} disabled={!liberado || ocupado}>Continuar</Botao>
+        {!ocultarContinuar && <Botao type="button" className="flex-1" onClick={onSeguir} disabled={!liberado || ocupado}>Continuar</Botao>}
       </div>
     </div>
   );
@@ -410,7 +412,7 @@ function EtapaConsulta({ tx, ocupado, onVoltar, onConsultar, onSeguir }: { tx: T
 // ---------------------------------------------------------------------------
 // Etapa 4 — Fotos
 // ---------------------------------------------------------------------------
-function EtapaFotos({ tx, ocupado, onVoltar, onEnviar, onSeguir }: { tx: TransacaoView; ocupado: boolean; onVoltar: () => void; onEnviar: (slot: MediaSlot, arquivo: File) => Promise<void>; onSeguir: () => void }) {
+export function EtapaFotos({ tx, ocupado, onVoltar, onEnviar, onSeguir }: { tx: TransacaoView; ocupado: boolean; onVoltar: () => void; onEnviar: (slot: MediaSlot, arquivo: File) => Promise<void>; onSeguir: () => void }) {
   const completo = REQUIRED_MEDIA_SLOTS.every((s) => tx.media.some((m) => m.slot === s));
   return (
     <div className="cartao space-y-4">
@@ -441,7 +443,7 @@ function EtapaFotos({ tx, ocupado, onVoltar, onEnviar, onSeguir }: { tx: Transac
   );
 }
 
-function fotoSintetica(slot: MediaSlot): File {
+export function fotoSintetica(slot: MediaSlot): File {
   const c = document.createElement("canvas");
   c.width = 320; c.height = 240;
   const g = c.getContext("2d")!;
@@ -514,7 +516,7 @@ function EtapaCondicoes({ tx, kind, ocupado, onVoltar, onConfirmar }: { tx: Tran
 // ---------------------------------------------------------------------------
 // Etapa 6 — Aceite
 // ---------------------------------------------------------------------------
-function EtapaAceite({ tx, pessoa, papelPessoa, ocupado, onVoltar, recarregar, onConviteEnviado, executar, onConcluir }: {
+export function EtapaAceite({ tx, pessoa, papelPessoa, ocupado, onVoltar, recarregar, onConviteEnviado, executar, onConcluir }: {
   tx: TransacaoView; pessoa: PartyView; papelPessoa: "seller" | "buyer"; ocupado: boolean; onVoltar: () => void;
   recarregar: () => Promise<TransacaoView>; onConviteEnviado: () => void; executar: <T>(fn: () => Promise<T>) => Promise<T | undefined>; onConcluir: () => Promise<void>;
 }) {

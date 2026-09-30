@@ -9,9 +9,9 @@ export function Estoque() {
   if (!lista) return <Carregando />;
   return (
     <div>
-      <h1 className="text-2xl font-black tracking-tight mb-1">Aparelhos de que a loja é titular</h1>
-      <p className="text-slate-600 mb-4">A revenda parte daqui. É o segundo elo que transforma uma lista de compras em uma corrente.</p>
-      {lista.length === 0 && <p className="text-slate-600">Nenhum aparelho ainda. Conclua uma entrada no balcão.</p>}
+      <h1 className="text-2xl font-black tracking-tight mb-1">PDV — aparelhos de que a loja é titular</h1>
+      <p className="text-slate-600 mb-4">A venda parte daqui: dados do comprador, valor, pagamento, garantia, aceite pelo celular dele e nota de venda. É o segundo elo que transforma uma lista de compras em uma corrente.</p>
+      {lista.length === 0 && <p className="text-slate-600">Nenhum aparelho ainda. Conclua uma compra em Comprar.</p>}
       <ul className="space-y-2">
         {lista.map((i) => (
           <li key={i.device.device_id} className="cartao flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -19,7 +19,7 @@ export function Estoque() {
             <span className="font-mono text-sm">IMEI {i.device.imei_mascarado}</span>
             <span className="text-xs text-slate-500">titular desde {formatarData(i.desde)}</span>
             {i.protocolo_entrada && <span className="text-xs text-slate-500">entrada {i.protocolo_entrada}</span>}
-            <Link className="ml-auto" to={`/revenda/${i.device.device_id}`}><Botao variante="secundario">Revender</Botao></Link>
+            <Link className="ml-auto" to={`/pdv/${i.device.device_id}`}><Botao>Vender</Botao></Link>
           </li>
         ))}
       </ul>

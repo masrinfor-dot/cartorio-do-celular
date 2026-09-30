@@ -10,9 +10,11 @@
 import {
   DomainError,
   REQUIRED_MEDIA_SLOTS,
+  UNIQUE_MEDIA_SLOTS,
   acceptanceStatus,
   descreverFaltantes,
   cifrar,
+  decifrar,
   completarImei,
   consultaVigente,
   documentoValido,
@@ -103,6 +105,16 @@ interface DB {
   outbox: Array<Row & { topic: string; store_id: string; payload: Record<string, unknown>; processed_at: string | null }>;
   audit: Array<Row & { store_id: string | null; actor_user_id: string | null; action: string; subject_type: string; subject_id: string | null; metadata: Record<string, unknown> }>;
   whatsapp_inbox: Array<Row & { to_phone: string; to_masked: string; text: string }>;
+  // Avaliação de usados / compra, configurações por loja e integração ERP
+  avaliacoes: Array<Row & {
+    store_id: string; user_id: string; brand: string; model: string; memory: string | null; color: string | null; device: string;
+    customer_name: string | null; answers: Record<string, string>; estimativa: import("@core/index.ts").Estimativa | null; margem_tabela: 1 | 2 | 3;
+    closed_at: string | null; final_price_centavos: number | null; payment_method: string | null; pix_key: string | null; pix_key_holder: string | null;
+    seller_party_id: string | null; device_id: string | null; transaction_id: string | null; store_name: string | null;
+  }>;
+  party_details: Array<Row & { party_id: string; rg_encrypted: string | null; endereco_encrypted: string | null; bairro_encrypted: string | null }>;
+  store_settings: Array<Row & { store_id: string; key: string; value: unknown }>;
+  erp_envios: Array<Row & { store_id: string; transaction_id: string; tipo: "compra" | "venda"; status: "enviado" | "erro" | "simulado"; erp_ref: string | null; nfe_status: string | null; mensagem: string | null; payload: unknown }>;
 }
 
 function vazio(): DB {
@@ -111,6 +123,7 @@ function vazio(): DB {
     devices: [], device_identifiers: [], device_media: [], device_checks: [], device_events: [],
     transactions: [], transaction_parties: [], transaction_devices: [], transaction_terms: [], acceptances: [], invites: [],
     ownership_periods: [], certificates: [], idempotency_keys: [], outbox: [], audit: [], whatsapp_inbox: [],
+    avaliacoes: [], party_details: [], store_settings: [], erp_envios: [],
   };
 }
 
@@ -288,7 +301,7 @@ export const demoAdmin = {
 // A API
 // ---------------------------------------------------------------------------
 
-export const demoApi: RegistryApi = {
+export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
   modo: "demo",
 
   auth: {
@@ -508,7 +521,7 @@ export const demoApi: RegistryApi = {
       if (bytes.length === 0) throw new DomainError("foto_vazia", "A foto veio vazia. Tente de novo.");
       const sha256 = await sha256Hex(bytes);
       const data_url = await reduzirParaDataUrl(arquivo);
-      db.device_media = db.device_media.filter((m) => !(m.transaction_id === transaction_id && m.slot === slot)); // troca da foto do MESMO slot na mesma transação em rascunho
+      if (UNIQUE_MEDIA_SLOTS.includes(slot)) db.device_media = db.device_media.filter((m) => !(m.transaction_id === transaction_id && m.slot === slot)); // troca da foto do MESMO slot; os outros slots acumulam
       const m = { ...row(), device_id: dev.device_id, store_id: s.store.id, transaction_id, slot, sha256, data_url };
       db.device_media.push(m);
       salvar();
@@ -796,7 +809,7 @@ function avancarAposAceite(t: DB["transactions"][number]) {
 }
 
 function rotuloSlot(s: MediaSlot): string {
-  return { frente_ligada: "frente ligada", traseira: "traseira", tela_imei: "tela com o IMEI", laterais: "laterais", avarias: "avarias", documento: "documento", selfie: "selfie" }[s];
+  return { frente_ligada: "frente ligada", traseira: "traseira", tela_imei: "tela com o IMEI", laterais: "laterais", avarias: "avarias", documento: "documento", selfie: "selfie", comprovante: "comprovante de pagamento" }[s];
 }
 
 async function montarCertificado(transaction_id: string): Promise<CertificadoView> {
@@ -855,3 +868,30 @@ async function reduzirParaDataUrl(arquivo: Blob): Promise<string> {
     return await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(arquivo); });
   }
 }
+
+// ---------------------------------------------------------------------------
+// Internos expostos para o módulo de avaliação/compra da demonstração
+// (src/api/demoAvaliacao.ts). Só a demonstração usa isto.
+// ---------------------------------------------------------------------------
+export const demoInternals = {
+  db: () => db,
+  /** Sessão com loja obrigatória, no formato { user: {id}, store }. */
+  sessao: () => { const s = exigirSessao(); return { user: { id: s.user_id, email: s.email }, store: s.store }; },
+  salvar,
+  row,
+  agora,
+  delay,
+  exigirSessao,
+  partyView,
+  deviceView,
+  txView,
+  termosVigentes,
+  statusAceite,
+  checkVigente,
+  imeiDoDevice,
+  auditar,
+  mudarEstadoInterno,
+  cifrarDemo: (t: string) => cifrar(DEMO_KEY, t),
+  decifrarDemo: (b: string) => decifrar(DEMO_KEY, b),
+  hashDocDemo: (d: string) => hashDocumento(DEMO_PEPPER, d),
+};
