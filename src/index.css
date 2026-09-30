@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-ink: #0f172a;
+  --color-brand: #0f766e;
+  --color-brand-dark: #115e59;
+}
+
+html { font-size: 17px; }
+body { @apply bg-slate-100 text-slate-900 antialiased; }
+
+/* Campos grandes: isto é usado em pé, atrás de um balcão. */
+.campo {
+  @apply w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-3 text-lg outline-none transition
+         focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15 disabled:bg-slate-100;
+}
+.campo-erro { @apply border-red-600 focus:border-red-600 focus:ring-red-600/15; }
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-lg font-semibold transition
+         disabled:cursor-not-allowed disabled:opacity-40 select-none;
+}
+.btn-primario { @apply bg-teal-700 text-white hover:bg-teal-800 active:bg-teal-900; }
+.btn-secundario { @apply bg-white text-slate-900 border-2 border-slate-300 hover:bg-slate-50; }
+.btn-perigo { @apply bg-red-700 text-white hover:bg-red-800; }
+.btn-grande { @apply w-full py-4 text-xl; }
+
+.cartao { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-5; }
+
+.selo { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wide; }
+.selo-verificado { @apply bg-teal-100 text-teal-900 border border-teal-300; }
+.selo-declarado { @apply bg-amber-100 text-amber-900 border border-amber-300; }
+.selo-assistido { @apply bg-orange-100 text-orange-900 border border-orange-300; }
+.selo-forte { @apply bg-teal-100 text-teal-900 border border-teal-300; }

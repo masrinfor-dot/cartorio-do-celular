@@ -1,0 +1,9 @@
+# Configuração do Supabase CLI. As rotas PÚBLICAS não verificam JWT: são
+# abertas pelo cliente no celular dele, sem conta — de propósito.
+project_id = "cartorio-do-celular"
+
+[functions.aceite]
+verify_jwt = false
+
+[functions.certificado]
+verify_jwt = false
