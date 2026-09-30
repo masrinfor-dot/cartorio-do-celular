@@ -1,11 +1,11 @@
 // midia — recebe a foto (multipart), confere o tipo pelos BYTES, remove EXIF,
 // calcula SHA-256, grava no bucket PRIVADO registry-media e devolve URL assinada
 // de 60 segundos.
-import { DomainError, detectarTipo, removerMetadados, sha256Hex, type MediaSlot } from "../_shared/core/index.ts";
+import { DomainError, UNIQUE_MEDIA_SLOTS, detectarTipo, removerMetadados, sha256Hex, type MediaSlot } from "../_shared/core/index.ts";
 import { CORS, contexto, exigirLoja, json, lancarSeErro } from "../_shared/server.ts";
 import { deviceIdDaTx, obterTx } from "../_shared/views.ts";
 
-const SLOTS: MediaSlot[] = ["frente_ligada", "traseira", "tela_imei", "laterais", "avarias", "documento", "selfie"];
+const SLOTS: MediaSlot[] = ["frente_ligada", "traseira", "tela_imei", "laterais", "avarias", "documento", "selfie", "comprovante"];
 const MAX_BYTES = 12 * 1024 * 1024;
 
 Deno.serve(async (req) => {
@@ -42,9 +42,10 @@ Deno.serve(async (req) => {
     const { error: eUp } = await admin.storage.from("registry-media").upload(storage_key, bytes, { contentType: tipo, upsert: true });
     if (eUp) throw new DomainError("storage", "Não foi possível guardar a foto. Tente de novo.", 500);
 
-    // Troca da foto do MESMO slot na mesma transação em andamento: a anterior sai da tabela
-    // (a tabela de mídia não é append-only; o que é imutável é o elo, e ele ainda não existe).
-    await admin.from("registry_device_media").delete().eq("transaction_id", t.id).eq("slot", slot);
+    // Slots únicos (as três fotos obrigatórias): reenviar troca a anterior. Os
+    // demais (documento, avarias, comprovante) acumulam. A tabela de mídia não é
+    // append-only; o que é imutável é o elo, e ele ainda não existe.
+    if (UNIQUE_MEDIA_SLOTS.includes(slot)) await admin.from("registry_device_media").delete().eq("transaction_id", t.id).eq("slot", slot);
     const { data: m, error } = await admin.from("registry_device_media").insert({
       device_id, store_id: store.id, transaction_id: t.id, slot, storage_key, sha256, mime: tipo, bytes: bytes.length,
     }).select("id").single();

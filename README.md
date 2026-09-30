@@ -29,6 +29,14 @@ Zerar tudo: **📱 Celular do cliente → Zerar demonstração**.
 
 ---
 
+### Comprar, vender e as notas (v0.2)
+
+- **Comprar** = Avaliação de Usados (portada do Sheik CRM): Aparelho → Condições (checklist Apple/Android, com opções que bloqueiam e descontos) → Oferta (tabela de valores base × margem 1/2/3) → Fechar negócio (vendedor, RG/endereço, IMEI opcional, pagamento, fotos) → **Registro no Cartório** (consulta, aceite pelo celular, protocolo). Nota de compra imprimível com checklist, fotos, protocolo e QR.
+- **Compras**: celulares comprados (totais, busca, Completar IMEI, Reimprimir nota, Certificado, Enviar ao ERP) e últimas avaliações.
+- **Vender (PDV)**: para quem usa só o Cartório — venda do estoque com comprador, valor, pagamento, garantia, aceite pelo celular do comprador, transferência de titularidade e **nota de venda**.
+- **Config**: margens, questionário, formas de pagamento, valores base (importação `Marca;Modelo;Armazenamento;Valor`), integração ERP.
+- **ERP**: compra/venda concluída pode ser enviada ao Sheik Company ERP (`POST /device-purchases` ou `/device-sales`), que é quem emite a NF-e. O banco do Cartório fica separado. Na demonstração o envio é simulado.
+
 ## 2. Estrutura
 
 ```
@@ -43,7 +51,9 @@ supabase/
     acceptance.ts   status do aceite preso à versão + as cinco travas do aceite assistido
     imagem.ts       tipo real pelos bytes + remoção de EXIF (JPEG/PNG)
   functions/_shared/server.ts, views.ts, whatsapp.ts, certificado.ts
-  functions/{loja,identidade,aparelho,transacao,consulta_procedencia,midia,convite,aceite,aceite_loja,concluir,certificado}/
+  functions/_shared/ops.ts               operações de escrita compartilhadas (pessoa, aparelho, transação, termos, consulta)
+  functions/{loja,identidade,aparelho,transacao,consulta_procedencia,midia,convite,aceite,aceite_loja,concluir,certificado,avaliacao,erp}/
+  migrations/0003_avaliacao_compra_erp.sql       avaliações, configurações por loja, dados extras cifrados, envios ao ERP
   config.toml                            aceite e certificado são públicos (verify_jwt = false)
 src/
   api/types.ts     o contrato — a interface só conhece isto
@@ -67,7 +77,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 **Antes de qualquer coisa: ligue o repositório no GitHub.** A versão anterior deste projeto foi perdida por não estar versionada.
 
 1. Crie o projeto em <https://supabase.com>. Anote **Project URL**, **anon key** e **service_role key**.
-2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002_store_party_and_complete.sql`. (Ou `supabase db push` com o CLI.)
+2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002_store_party_and_complete.sql` e `0003_avaliacao_compra_erp.sql`. (Ou `supabase db push` com o CLI.)
 3. **Settings → Edge Functions → Secrets**:
    ```
    REGISTRY_PII_KEY      = <32 bytes em base64>   # cifra CPF/CNPJ
@@ -75,6 +85,8 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
    PUBLIC_APP_URL        = https://seu-dominio      # forma o link /aceite/<token>
    WHATSAPP_BRIDGE_URL   = https://.../send        # bridge da Sheikcell (POST {to, text})
    WHATSAPP_BRIDGE_TOKEN = ...
+   OPENAI_API_KEY        = opcional — pesquisa de preço por IA quando o modelo não está na tabela de valores base
+   OPENAI_MODEL          = opcional (padrão gpt-4o)
    ```
    Gerar as chaves: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
    **Trocar o PEPPER invalida todos os hashes já gravados; trocar a KEY torna ilegível todo documento cifrado. Guarde-os fora do Supabase também.**

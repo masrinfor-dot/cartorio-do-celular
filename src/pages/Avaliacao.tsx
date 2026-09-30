@@ -308,7 +308,13 @@ export function Avaliacao() {
               ))}
             </div>
           </div>
-          {avaliacao.estimativa && <p className="text-sm text-slate-700">{avaliacao.estimativa.justificativa}</p>}
+          {avaliacao.estimativa && (
+            <p className="text-sm text-slate-700">
+              {tabela === avaliacao.estimativa.margem_tabela
+                ? avaliacao.estimativa.justificativa
+                : `${avaliacao.estimativa.metodo === "tabela" ? "Valor base da tabela da loja" : "Sugestão da IA"} recalculado para a Tabela ${tabela} (margem de ${margemDaTabela(config.margens, tabela)}%)${avaliacao.estimativa.desconto_pct ? ` com ${avaliacao.estimativa.desconto_pct}% de desconto pelo estado declarado` : ""}.`}
+            </p>
+          )}
           <p className="text-xs text-slate-500">⚠ Sugestão calculada pela tabela da loja e pelo estado declarado — confirme antes de fechar a compra.</p>
           <div className="flex flex-wrap gap-3">
             <Botao onClick={irParaFechar} disabled={!(sugestaoCent > 0)}>Fechar negócio</Botao>
