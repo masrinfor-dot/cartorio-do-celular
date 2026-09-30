@@ -25,9 +25,8 @@ jobs:
         env:
           VITE_BACKEND: demo
           VITE_BASE: /${{ github.event.repository.name }}/
+      # Pré-requisito (uma vez): Settings → Pages → Source: "GitHub Actions"
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
