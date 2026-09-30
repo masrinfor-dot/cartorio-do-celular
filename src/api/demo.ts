@@ -546,7 +546,7 @@ export const demoApi: RegistryApi = {
         inv = { ...row(), transaction_id, party_id, terms_version: terms.version, terms_hash: terms.content_hash, token_hash: await sha256Hex(token), otp_hash: null, otp_expires_at: null, otp_attempts: 0, otp_sent_count: 0, destination_phone: phone, destination_masked: mascararTelefone(phone), expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(), consumed_at: null, revoked_at: null, revoked_reason: null };
         db.invites.push(inv);
       }
-      const link = `${location.origin}/aceite/${token}`;
+      const link = `${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/aceite/${token}`;
       const nomeLoja = s.store.name;
       enviarWhatsapp(phone, `Cartório do Celular — ${nomeLoja} registrou a passagem do seu aparelho. Para confirmar, abra o link e informe o código que vai chegar aqui: ${link}`);
       if (t.state === "awaiting_seller" && part.role === "buyer") { /* ok */ }

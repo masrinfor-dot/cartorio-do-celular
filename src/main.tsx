@@ -33,7 +33,7 @@ function Inicio() {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SessionProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
         <Routes>
           {/* Pública, sem layout e sem sessão: o cliente abre no celular dele */}
           <Route path="/aceite/:token" element={<Aceite />} />

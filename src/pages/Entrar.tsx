@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, MODO_DEMO } from "@/api/index.ts";
 import { Botao, Campo, Erro, Rotulo, Aviso } from "@/components/ui.tsx";
 import { mensagemDeErro, useSession } from "@/lib/session.tsx";
@@ -53,7 +53,7 @@ export function Entrar() {
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
-        Só quer consultar um aparelho? <a className="text-teal-800 underline" href="/passaporte">Consultar passaporte</a>
+        Só quer consultar um aparelho? <Link className="text-teal-800 underline" to="/passaporte">Consultar passaporte</Link>
       </p>
     </div>
   );

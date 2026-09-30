@@ -20,7 +20,7 @@ export function Certificado() {
   }, [protocolo]);
   useEffect(() => {
     if (!c) return;
-    QRCode.toDataURL(`${location.origin}/certificado/${c.protocolo}`, { margin: 1, width: 160 }).then(setQr);
+    QRCode.toDataURL(`${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/certificado/${c.protocolo}`, { margin: 1, width: 160 }).then(setQr);
   }, [c]);
 
   if (c === undefined) return <Carregando />;

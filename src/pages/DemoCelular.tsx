@@ -2,12 +2,14 @@
 // que o código de 6 dígitos aparece, porque esta tela é o celular dele.
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { demoWhatsapp, demoAdmin } from "@/api/demo.ts";
 import { Aviso, Botao, formatarData } from "@/components/ui.tsx";
 
 export function DemoCelular() {
   const [msgs, setMsgs] = useState(demoWhatsapp.mensagens());
   const [stats, setStats] = useState(demoAdmin.estatisticas());
+  const nav = useNavigate();
   useEffect(() => {
     const id = setInterval(() => { setMsgs(demoWhatsapp.mensagens()); setStats(demoAdmin.estatisticas()); }, 1500);
     return () => clearInterval(id);
@@ -33,7 +35,7 @@ export function DemoCelular() {
       </div>
       <div className="flex gap-2">
         <Botao variante="secundario" onClick={() => { demoWhatsapp.limpar(); setMsgs([]); }}>Limpar mensagens</Botao>
-        <Botao variante="perigo" onClick={() => { if (confirm("Apagar TODOS os dados da demonstração?")) { demoAdmin.zerar(); location.href = "/entrar"; } }}>Zerar demonstração</Botao>
+        <Botao variante="perigo" onClick={() => { if (confirm("Apagar TODOS os dados da demonstração?")) { demoAdmin.zerar(); nav("/entrar"); } }}>Zerar demonstração</Botao>
       </div>
     </div>
   );
