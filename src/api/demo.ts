@@ -86,10 +86,10 @@ interface DB {
   tenant_party_links: Array<Row & { store_id: string; party_id: string }>;
   devices: Array<Row & { brand: string | null; model: string | null; storage: string | null; color: string | null }>;
   device_identifiers: Array<Row & { device_id: string; type: string; value: string; is_active: boolean }>;
-  device_media: Array<Row & { device_id: string; store_id: string; transaction_id: string; slot: MediaSlot; sha256: string; data_url: string }>;
+  device_media: Array<Row & { device_id: string; store_id: string | null; transaction_id: string; slot: MediaSlot; sha256: string; data_url: string }>;
   device_checks: Array<Row & CheckOutcome & { device_id: string; transaction_id: string }>;
   device_events: Array<Row & { device_id: string; store_id: string | null; type: string; visibility: "public" | "tenant" | "private"; transaction_id: string | null; payload: Record<string, unknown> }>;
-  transactions: Array<Row & { store_id: string; kind: TransactionKind; state: TransactionState; public_protocol: string; current_terms_version: number; created_by: string; updated_at: string; completed_at: string | null }>;
+  transactions: Array<Row & { store_id: string | null; kind: TransactionKind; state: TransactionState; public_protocol: string; current_terms_version: number; created_by: string; updated_at: string; completed_at: string | null }>;
   transaction_parties: Array<Row & TransactionParty & { transaction_id: string }>;
   transaction_devices: Array<Row & { transaction_id: string; device_id: string }>;
   transaction_terms: Array<Row & { transaction_id: string; version: number; payload: TermsPayload; content_hash: string; frozen_at: string }>;
@@ -115,6 +115,10 @@ interface DB {
   party_details: Array<Row & { party_id: string; rg_encrypted: string | null; endereco_encrypted: string | null; bairro_encrypted: string | null }>;
   store_settings: Array<Row & { store_id: string; key: string; value: unknown }>;
   erp_envios: Array<Row & { store_id: string; transaction_id: string; tipo: "compra" | "venda"; status: "enviado" | "erro" | "simulado"; erp_ref: string | null; nfe_status: string | null; mensagem: string | null; payload: unknown }>;
+  // Portal PF e declarações do titular
+  device_flags: Array<Row & { device_id: string; kind: "theft_declared"; tipo: "furto" | "roubo" | "perda"; declared_by_party_id: string; bo_numero: string | null; bo_data: string | null; cidade: string | null; uf: string | null; active: boolean; withdrawn_at: string | null; withdrawn_reason: string | null }>;
+  pf_otps: Array<Row & { cpf_hash: string; phone: string; nome: string | null; otp_hash: string; expires_at: string; attempts: number }>;
+  pf_sessions: Array<Row & { token_hash: string; party_id: string; expires_at: string }>;
 }
 
 function vazio(): DB {
@@ -124,6 +128,7 @@ function vazio(): DB {
     transactions: [], transaction_parties: [], transaction_devices: [], transaction_terms: [], acceptances: [], invites: [],
     ownership_periods: [], certificates: [], idempotency_keys: [], outbox: [], audit: [], whatsapp_inbox: [],
     avaliacoes: [], party_details: [], store_settings: [], erp_envios: [],
+    device_flags: [], pf_otps: [], pf_sessions: [],
   };
 }
 
@@ -223,6 +228,7 @@ function txView(tx_id: string): TransacaoView {
     check: checkVigente(tx_id),
     media: db.device_media.filter((m) => m.transaction_id === tx_id).map((m) => ({ media_id: m.id, slot: m.slot, sha256: m.sha256, url: m.data_url })),
     aceite: statusAceite(tx_id),
+    ocorrencia_ativa: dev ? ocorrenciaAtiva(dev.device_id) : null,
     convites: db.invites.filter((i) => i.transaction_id === tx_id).map((i) => ({ invite_id: i.id, party_id: i.party_id, terms_version: i.terms_version, destino_mascarado: i.destination_masked, consumed_at: i.consumed_at, revoked_at: i.revoked_at, expires_at: i.expires_at })),
   };
 }
@@ -242,13 +248,18 @@ function linhaDoTempo(device_id: string, publicOnly: boolean, store_id?: string)
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
     .map((e) => ({ tipo: e.type, data: e.created_at, dados: e.payload }));
 }
+/** Declaração ativa de furto/roubo/perda pelo titular registrado — sem PII. */
+function ocorrenciaAtiva(device_id: string) {
+  const f = db.device_flags.find((x) => x.device_id === device_id && x.kind === "theft_declared" && x.active);
+  return f ? { tipo: f.tipo, bo_numero: f.bo_numero, bo_data: f.bo_data, cidade: f.cidade, uf: f.uf, declarada_em: f.created_at } : null;
+}
 function buscaAparelho(device_id: string, store_id?: string): BuscaAparelho {
   const dv = deviceView(device_id);
   if (!dv) return { encontrado: false, elos: 0, linha_do_tempo: [] };
   const elos = db.ownership_periods.filter((o) => o.device_id === device_id).length;
   const titular = db.ownership_periods.find((o) => o.device_id === device_id && !o.ended_at);
   const storeParty = store_id ? db.stores.find((s) => s.id === store_id)?.party_id : undefined;
-  return { encontrado: true, device: dv, elos, linha_do_tempo: linhaDoTempo(device_id, !store_id, store_id), loja_e_titular: !!titular && titular.party_id === storeParty };
+  return { encontrado: true, device: dv, elos, linha_do_tempo: linhaDoTempo(device_id, !store_id, store_id), loja_e_titular: !!titular && titular.party_id === storeParty, ocorrencia_ativa: ocorrenciaAtiva(device_id) };
 }
 
 async function idempotente<T extends object>(scope: string, key: string, store_id: string, body: unknown, fn: () => Promise<T>): Promise<T & { repetida?: boolean }> {
@@ -301,7 +312,7 @@ export const demoAdmin = {
 // A API
 // ---------------------------------------------------------------------------
 
-export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
+export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda" | "pf"> = {
   modo: "demo",
 
   auth: {
@@ -496,17 +507,7 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
       await delay(400);
       const s = exigirSessao();
       const t = exigirTxDaLoja(transaction_id, s.store.id);
-      const dev = db.transaction_devices.find((d) => d.transaction_id === transaction_id)!;
-      const out = simularConsulta(imeiDoDevice(dev.device_id));
-      db.device_checks.push({ ...row(), ...out, device_id: dev.device_id, transaction_id });
-      if (t.state === "awaiting_data") mudarEstadoInterno(t, "awaiting_checks");
-      if (t.state === "awaiting_checks" || t.state === "under_review") {
-        if (out.result === "clear") mudarEstadoInterno(t, "awaiting_seller");
-        else if (out.result === "restricted") mudarEstadoInterno(t, "blocked");
-        else if (out.result === "inconclusive") mudarEstadoInterno(t, "under_review");
-        // unavailable / expired: fica onde está, sem liberar.
-      }
-      db.device_events.push({ ...row(), device_id: dev.device_id, store_id: s.store.id, type: "check_performed", visibility: "tenant", transaction_id, payload: { resultado: out.result, fonte: out.provider, data: out.checked_at } });
+      const out = executarConsultaInterno(t, { store_id: s.store.id, user_id: s.user_id });
       salvar();
       return out;
     },
@@ -537,35 +538,9 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
       const part = db.transaction_parties.find((p) => p.transaction_id === transaction_id && p.party_id === party_id);
       if (!part) throw new DomainError("parte", "Essa pessoa não faz parte desta transação.", 404);
       if (part.is_tenant_side) throw new DomainError("convite_loja", "A loja tem canal próprio de aceite; o convite é para a outra parte.", 403);
-      const terms = termosVigentes(transaction_id);
-      if (!terms) throw new DomainError("sem_termos", "Confirme as condições antes de enviar o código.", 409);
-      const phone = db.party_contacts.find((c) => c.party_id === party_id && c.kind === "phone")?.value;
-      if (!phone) throw new DomainError("sem_telefone", "Essa pessoa não tem telefone cadastrado — e o código só chega por ele.", 409);
-
-      const vivo = db.invites.find((i) => i.transaction_id === transaction_id && i.party_id === party_id && i.terms_version === terms.version && !i.consumed_at && !i.revoked_at);
-      let inv = vivo;
-      let token = "";
-      let reaproveitado = false;
-      if (inv && new Date(inv.expires_at).getTime() > Date.now()) {
-        // Um convite vivo por parte e versão: reenviar reaproveita. Como o token não é
-        // recuperável (só o hash), a demonstração gera um token novo e troca o hash —
-        // continua sendo UM convite.
-        token = gerarToken();
-        inv.token_hash = await sha256Hex(token);
-        reaproveitado = true;
-      } else {
-        if (inv) { inv.revoked_at = agora(); inv.revoked_reason = "expirado"; }
-        token = gerarToken();
-        inv = { ...row(), transaction_id, party_id, terms_version: terms.version, terms_hash: terms.content_hash, token_hash: await sha256Hex(token), otp_hash: null, otp_expires_at: null, otp_attempts: 0, otp_sent_count: 0, destination_phone: phone, destination_masked: mascararTelefone(phone), expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(), consumed_at: null, revoked_at: null, revoked_reason: null };
-        db.invites.push(inv);
-      }
-      const link = `${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/aceite/${token}`;
-      const nomeLoja = s.store.name;
-      enviarWhatsapp(phone, `Cartório do Celular — ${nomeLoja} registrou a passagem do seu aparelho. Para confirmar, abra o link e informe o código que vai chegar aqui: ${link}`);
-      if (t.state === "awaiting_seller" && part.role === "buyer") { /* ok */ }
-      auditar(s.store.id, s.user_id, "invite.sent", "invite", inv.id, { party_id, terms_version: terms.version, reaproveitado });
+      const r = await criarConviteInterno(t, party_id, `${s.store.name} registrou a passagem do seu aparelho`, { store_id: s.store.id, user_id: s.user_id });
       salvar();
-      return { invite_id: inv.id, link, destino_mascarado: inv.destination_masked, expires_at: inv.expires_at, reaproveitado };
+      return r;
     },
   },
 
@@ -586,14 +561,15 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
       const party = db.parties.find((p) => p.id === inv.party_id)!;
       const dev = db.transaction_devices.find((d) => d.transaction_id === t.id)!;
       const dv = deviceView(dev.device_id)!;
-      const loja = db.stores.find((st) => st.id === t.store_id)!;
+      const loja = t.store_id ? db.stores.find((st) => st.id === t.store_id) : null;
+      const outra = db.transaction_parties.find((p) => p.transaction_id === t.id && p.party_id !== inv.party_id);
       const p = terms.payload;
       return {
         valido: true,
         aceito: !!inv.consumed_at,
         primeiro_nome: primeiroNome(party.display_name),
         papel: part.role as "seller" | "buyer",
-        loja: loja.name,
+        loja: loja ? loja.name : `Venda entre pessoas · ${outra ? nomeCurto(partyView(outra.party_id).display_name) : ""}`,
         imei_mascarado: dv.imei_mascarado,
         aparelho: [dv.brand, dv.model, dv.storage, dv.color].filter(Boolean).join(" "),
         valor: formatarCentavos(p.valor_centavos),
@@ -645,6 +621,10 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
       registrarAceite(t.id, inv.party_id, terms.version, terms.content_hash, "otp_whatsapp", { invite_id: inv.id, destino: inv.destination_masked });
       inv.consumed_at = agora();
       avancarAposAceite(t);
+      // Entre pessoas (sem loja): quando as duas aceitaram, a transferência conclui sozinha.
+      if (t.kind === "pf_pf" && !t.store_id && statusAceite(t.id).complete) {
+        try { await concluirInterno(t, { store_id: null, user_id: null }); } catch { /* fica pronta para concluir; o vendedor vê o motivo no portal */ }
+      }
       salvar();
       return { aceito: true };
     },
@@ -693,52 +673,7 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
     await delay(300);
     const s = exigirSessao();
     const t = exigirTxDaLoja(transaction_id, s.store.id);
-    const r = await idempotente("tx.complete", idempotency_key, s.store.id, { transaction_id }, async () => {
-      const dev = db.transaction_devices.find((d) => d.transaction_id === transaction_id)!;
-      // 1. gate de procedência
-      const ck = checkVigente(transaction_id);
-      exigirProcedenciaLiberada(ck ? consultaVigente(ck) : null);
-      // 2. fotos obrigatórias
-      const slots = new Set(db.device_media.filter((m) => m.transaction_id === transaction_id).map((m) => m.slot));
-      const faltam = REQUIRED_MEDIA_SLOTS.filter((sl) => !slots.has(sl));
-      if (faltam.length) throw new DomainError("fotos", `Faltam fotos obrigatórias: ${faltam.map(rotuloSlot).join(", ")}.`, 409);
-      // 3. aceites da versão vigente
-      const st = statusAceite(transaction_id);
-      if (!st.complete) throw new DomainError("aceite_incompleto", descreverFaltantes(st), 409);
-      // 4. transição
-      if (t.state !== "ready_to_complete") exigirTransicao(t.state, "completed");
-      // 5–6. titularidade
-      const terms = termosVigentes(transaction_id)!;
-      const seller = db.transaction_parties.find((p) => p.transaction_id === transaction_id && p.role === "seller")!;
-      const buyer = db.transaction_parties.find((p) => p.transaction_id === transaction_id && p.role === "buyer")!;
-      const now = agora();
-      const aberto = db.ownership_periods.find((o) => o.device_id === dev.device_id && !o.ended_at);
-      if (aberto) {
-        if (aberto.party_id !== seller.party_id) {
-          if (t.kind !== "pf_pj") throw new DomainError("titular_divergente", "O titular atual registrado não é o vendedor desta transação.", 409);
-          // Entrada de balcão vinda de quem não era o último titular registrado: o
-          // Cartório registra a passagem e DECLARA o buraco na corrente — não acusa.
-          db.device_events.push({ ...row(), device_id: dev.device_id, store_id: s.store.id, type: "chain_gap", visibility: "public", transaction_id, payload: { aviso: "O vendedor desta passagem não era o último titular registrado. Houve ao menos uma passagem sem registro no Cartório entre as duas." } });
-        }
-        aberto.ended_at = now;
-      }
-      // Exclusão de sobreposição (no Postgres é constraint; aqui, conferência explícita).
-      if (db.ownership_periods.some((o) => o.device_id === dev.device_id && !o.ended_at)) throw new DomainError("dois_donos", "Já existe um titular aberto para este aparelho.", 409);
-      db.ownership_periods.push({ ...row(), device_id: dev.device_id, party_id: buyer.party_id, transaction_id, started_at: now, ended_at: null });
-      // 7. evento público
-      db.device_events.push({ ...row(), device_id: dev.device_id, store_id: s.store.id, type: "transfer_completed", visibility: "public", transaction_id, payload: { protocolo: t.public_protocol, modalidade: t.kind, aceite: st.grade, termos_hash: terms.content_hash, consulta: ck ? { resultado: ck.result, fonte: ck.provider, data: ck.checked_at } : null } });
-      // 8. outbox
-      db.outbox.push({ ...row(), topic: "registry.transfer_completed", store_id: s.store.id, payload: { transaction_id, device_id: dev.device_id, protocolo: t.public_protocol, kind: t.kind, aceite: st.grade }, processed_at: null });
-      // 9. estado
-      mudarEstadoInterno(t, "completed");
-      t.completed_at = now;
-      // certificado
-      const cert = await montarCertificado(transaction_id);
-      db.certificates.push({ ...row(), transaction_id, protocol: t.public_protocol, content_hash: cert.content_hash });
-      auditar(s.store.id, s.user_id, "tx.completed", "transaction", transaction_id, { grade: st.grade });
-      salvar();
-      return { protocolo: t.public_protocol, grade: st.grade, completed_at: now, repetida: false };
-    });
+    const r = await idempotente("tx.complete", idempotency_key, s.store.id, { transaction_id }, () => concluirInterno(t, { store_id: s.store.id, user_id: s.user_id }));
     return { ...r, repetida: !!r.repetida };
   },
 
@@ -770,6 +705,7 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda"> = {
         elos: db.ownership_periods.filter((o) => o.device_id === id.device_id).length,
         linha_do_tempo: linhaDoTempo(id.device_id, true),
         limites: "O Cartório registra passagens declaradas e verificadas na data indicada. Não é órgão público e não substitui boletim de ocorrência, nota fiscal ou vistoria técnica.",
+        ocorrencia_ativa: ocorrenciaAtiva(id.device_id),
       };
     },
     async certificado(protocolo) {
@@ -808,6 +744,106 @@ function avancarAposAceite(t: DB["transactions"][number]) {
   }
 }
 
+/** Consulta de procedência desta transação (simulador). Usada pela loja e pelo portal PF. */
+function executarConsultaInterno(t: DB["transactions"][number], actor: { store_id: string | null; user_id: string | null }): CheckOutcome {
+  const dev = db.transaction_devices.find((d) => d.transaction_id === t.id)!;
+  const imei = imeiDoDevice(dev.device_id);
+  if (!imei) throw new DomainError("imei_pendente", "Este aparelho ainda não tem IMEI. Complete o IMEI antes da consulta.", 409);
+  const out = simularConsulta(imei);
+  db.device_checks.push({ ...row(), ...out, device_id: dev.device_id, transaction_id: t.id });
+  if (t.state === "awaiting_data") mudarEstadoInterno(t, "awaiting_checks");
+  if (t.state === "awaiting_checks" || t.state === "under_review") {
+    if (out.result === "clear") mudarEstadoInterno(t, "awaiting_seller");
+    else if (out.result === "restricted") mudarEstadoInterno(t, "blocked");
+    else if (out.result === "inconclusive" && t.state !== "under_review") mudarEstadoInterno(t, "under_review");
+  }
+  db.device_events.push({ ...row(), device_id: dev.device_id, store_id: actor.store_id, type: "check_performed", visibility: "tenant", transaction_id: t.id, payload: { resultado: out.result, fonte: out.provider, data: out.checked_at } });
+  return out;
+}
+
+/** Convite de aceite para uma parte — usado pela loja e pelo portal PF. Devolve o link UMA vez. */
+async function criarConviteInterno(t: DB["transactions"][number], party_id: string, remetente: string, actor: { store_id: string | null; user_id: string | null }): Promise<ConviteCriado> {
+  const terms = termosVigentes(t.id);
+  if (!terms) throw new DomainError("sem_termos", "Confirme as condições antes de enviar o código.", 409);
+  const phone = db.party_contacts.find((c) => c.party_id === party_id && c.kind === "phone")?.value;
+  if (!phone) throw new DomainError("sem_telefone", "Essa pessoa não tem telefone cadastrado — e o código só chega por ele.", 409);
+  const vivo = db.invites.find((i) => i.transaction_id === t.id && i.party_id === party_id && i.terms_version === terms.version && !i.consumed_at && !i.revoked_at);
+  let inv = vivo;
+  let token = "";
+  let reaproveitado = false;
+  if (inv && new Date(inv.expires_at).getTime() > Date.now()) {
+    // Um convite vivo por parte e versão: reenviar reaproveita (token novo, mesmo convite).
+    token = gerarToken();
+    inv.token_hash = await sha256Hex(token);
+    reaproveitado = true;
+  } else {
+    if (inv) { inv.revoked_at = agora(); inv.revoked_reason = "expirado"; }
+    token = gerarToken();
+    inv = { ...row(), transaction_id: t.id, party_id, terms_version: terms.version, terms_hash: terms.content_hash, token_hash: await sha256Hex(token), otp_hash: null, otp_expires_at: null, otp_attempts: 0, otp_sent_count: 0, destination_phone: phone, destination_masked: mascararTelefone(phone), expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(), consumed_at: null, revoked_at: null, revoked_reason: null };
+    db.invites.push(inv);
+  }
+  const link = `${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/aceite/${token}`;
+  enviarWhatsapp(phone, `Cartório do Celular — ${remetente}. Para confirmar, abra o link e informe o código que vai chegar aqui: ${link}`);
+  auditar(actor.store_id, actor.user_id, "invite.sent", "invite", inv.id, { party_id, terms_version: terms.version, reaproveitado });
+  return { invite_id: inv.id, link, destino_mascarado: inv.destination_masked, expires_at: inv.expires_at, reaproveitado };
+}
+
+/**
+ * Os nove passos da conclusão — para loja e para o portal PF. No Supabase é
+ * `registry_complete_transaction`, em UMA transação de banco.
+ */
+async function concluirInterno(t: DB["transactions"][number], actor: { store_id: string | null; user_id: string | null }): Promise<ConclusaoResultado> {
+  const transaction_id = t.id;
+  const dev = db.transaction_devices.find((d) => d.transaction_id === transaction_id)!;
+  // 0. declaração de furto/roubo ativa pelo titular registrado: não conclui.
+  const oc = ocorrenciaAtiva(dev.device_id);
+  if (oc) throw new DomainError("ocorrencia_ativa", `Consta declaração de ${oc.tipo} pelo titular registrado${oc.bo_numero ? ` (B.O. ${oc.bo_numero})` : ""} em ${new Date(oc.declarada_em).toLocaleDateString("pt-BR")}. Enquanto a declaração estiver ativa, esta transação não pode ser concluída.`, 409);
+  // 1. gate de procedência
+  const ck = checkVigente(transaction_id);
+  exigirProcedenciaLiberada(ck ? consultaVigente(ck) : null);
+  // 2. fotos obrigatórias (a comunicação de venda entre pessoas é a exceção: o
+  //    aparelho já não está com o vendedor; a prova é o aceite das duas partes)
+  const termsAtual = termosVigentes(transaction_id);
+  const comunicacao = t.kind === "pf_pf" && termsAtual?.payload.declaracoes?.origem === "comunicacao_de_venda";
+  const slots = new Set(db.device_media.filter((m) => m.transaction_id === transaction_id).map((m) => m.slot));
+  const faltam = comunicacao ? [] : REQUIRED_MEDIA_SLOTS.filter((sl) => !slots.has(sl));
+  if (faltam.length) throw new DomainError("fotos", `Faltam fotos obrigatórias: ${faltam.map(rotuloSlot).join(", ")}.`, 409);
+  // 3. aceites da versão vigente
+  const st = statusAceite(transaction_id);
+  if (!st.complete) throw new DomainError("aceite_incompleto", descreverFaltantes(st), 409);
+  // 4. transição
+  if (t.state !== "ready_to_complete") exigirTransicao(t.state, "completed");
+  // 5–6. titularidade
+  const terms = termosVigentes(transaction_id)!;
+  const seller = db.transaction_parties.find((p) => p.transaction_id === transaction_id && p.role === "seller")!;
+  const buyer = db.transaction_parties.find((p) => p.transaction_id === transaction_id && p.role === "buyer")!;
+  const now = agora();
+  const aberto = db.ownership_periods.find((o) => o.device_id === dev.device_id && !o.ended_at);
+  if (aberto) {
+    if (aberto.party_id !== seller.party_id) {
+      if (t.kind !== "pf_pj") throw new DomainError("titular_divergente", "O titular atual registrado não é o vendedor desta transação.", 409);
+      // Entrada de balcão vinda de quem não era o último titular registrado: o
+      // Cartório registra a passagem e DECLARA o buraco na corrente — não acusa.
+      db.device_events.push({ ...row(), device_id: dev.device_id, store_id: actor.store_id, type: "chain_gap", visibility: "public", transaction_id, payload: { aviso: "O vendedor desta passagem não era o último titular registrado. Houve ao menos uma passagem sem registro no Cartório entre as duas." } });
+    }
+    aberto.ended_at = now;
+  }
+  if (db.ownership_periods.some((o) => o.device_id === dev.device_id && !o.ended_at)) throw new DomainError("dois_donos", "Já existe um titular aberto para este aparelho.", 409);
+  db.ownership_periods.push({ ...row(), device_id: dev.device_id, party_id: buyer.party_id, transaction_id, started_at: now, ended_at: null });
+  // 7. evento público
+  db.device_events.push({ ...row(), device_id: dev.device_id, store_id: actor.store_id, type: "transfer_completed", visibility: "public", transaction_id, payload: { protocolo: t.public_protocol, modalidade: t.kind, aceite: st.grade, termos_hash: terms.content_hash, consulta: ck ? { resultado: ck.result, fonte: ck.provider, data: ck.checked_at } : null } });
+  // 8. outbox
+  db.outbox.push({ ...row(), topic: "registry.transfer_completed", store_id: actor.store_id ?? "", payload: { transaction_id, device_id: dev.device_id, protocolo: t.public_protocol, kind: t.kind, aceite: st.grade }, processed_at: null });
+  // 9. estado
+  mudarEstadoInterno(t, "completed");
+  t.completed_at = now;
+  const cert = await montarCertificado(transaction_id);
+  db.certificates.push({ ...row(), transaction_id, protocol: t.public_protocol, content_hash: cert.content_hash });
+  auditar(actor.store_id, actor.user_id, "tx.completed", "transaction", transaction_id, { grade: st.grade });
+  salvar();
+  return { protocolo: t.public_protocol, grade: st.grade, completed_at: now, repetida: false };
+}
+
 function rotuloSlot(s: MediaSlot): string {
   return { frente_ligada: "frente ligada", traseira: "traseira", tela_imei: "tela com o IMEI", laterais: "laterais", avarias: "avarias", documento: "documento", selfie: "selfie", comprovante: "comprovante de pagamento" }[s];
 }
@@ -821,7 +857,7 @@ async function montarCertificado(transaction_id: string): Promise<CertificadoVie
   const buyer = db.transaction_parties.find((p) => p.transaction_id === transaction_id && p.role === "buyer")!;
   const st = statusAceite(transaction_id);
   const ck = db.device_checks.filter((c) => c.transaction_id === transaction_id).sort((a, b) => b.checked_at.localeCompare(a.checked_at))[0] ?? null;
-  const loja = db.stores.find((x) => x.id === t.store_id)!;
+  const loja = t.store_id ? db.stores.find((x) => x.id === t.store_id) : null;
   const p = terms.payload;
   const elosAntes = db.ownership_periods.filter((o) => o.device_id === dev.device_id && o.transaction_id !== transaction_id && (!o.ended_at || o.ended_at <= (t.completed_at ?? agora()))).length;
   const conteudo = {
@@ -830,7 +866,7 @@ async function montarCertificado(transaction_id: string): Promise<CertificadoVie
     emitido_em: t.completed_at ?? "",
     imei_mascarado: dv.imei_mascarado,
     aparelho: [dv.brand, dv.model, dv.storage, dv.color].filter(Boolean).join(" "),
-    loja: loja.name,
+    loja: loja ? loja.name : "Venda entre pessoas (sem loja)",
     vendedor: nomeCurto(partyView(seller.party_id).display_name),
     comprador: nomeCurto(partyView(buyer.party_id).display_name),
     grade: st.grade,
@@ -894,4 +930,16 @@ export const demoInternals = {
   cifrarDemo: (t: string) => cifrar(DEMO_KEY, t),
   decifrarDemo: (b: string) => decifrar(DEMO_KEY, b),
   hashDocDemo: (d: string) => hashDocumento(DEMO_PEPPER, d),
+  hashOtpDemo: (id: string, codigo: string) => hashOtp(DEMO_PEPPER, id, codigo),
+  criarConviteInterno,
+  concluirInterno,
+  executarConsultaInterno,
+  registrarAceite,
+  avancarAposAceite,
+  ocorrenciaAtiva,
+  enviarWhatsapp,
+  linhaDoTempo,
+  buscaAparelho,
+  montarCertificado,
+  reduzirParaDataUrl,
 };

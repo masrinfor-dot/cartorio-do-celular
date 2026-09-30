@@ -43,6 +43,11 @@ export function Passaporte() {
       <Erro>{erro}</Erro>
       {carregando && <Carregando />}
       {r && !r.encontrado && <Aviso tom="neutro" titulo="Sem registro">{r.aviso}</Aviso>}
+      {r && r.encontrado && r.ocorrencia_ativa && (
+        <Aviso tom="bloqueio" titulo={`Consta declaração de ${r.ocorrencia_ativa.tipo} pelo titular registrado`}>
+          Declarada em {new Date(r.ocorrencia_ativa.declarada_em).toLocaleDateString("pt-BR")}{r.ocorrencia_ativa.bo_numero ? `, boletim de ocorrência nº ${r.ocorrencia_ativa.bo_numero}` : ", sem número de boletim informado"}{r.ocorrencia_ativa.cidade ? ` (${r.ocorrencia_ativa.cidade}${r.ocorrencia_ativa.uf ? "/" + r.ocorrencia_ativa.uf : ""})` : ""}. É uma declaração do titular, não uma verificação do Cartório. Nenhuma transferência deste aparelho conclui enquanto a declaração estiver ativa. Canal oficial: Celular Seguro (gov.br).
+        </Aviso>
+      )}
       {r && r.encontrado && (
         <div className="cartao space-y-4">
           <div className="flex items-baseline gap-4">

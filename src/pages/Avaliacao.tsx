@@ -383,6 +383,7 @@ export function Avaliacao() {
           <Aviso tom="ok" titulo="Negócio fechado — compra registrada">
             {avaliacao.device} · {formatarCentavos(avaliacao.final_price_centavos ?? 0)} · {avaliacao.payment_method}. <Link className="underline font-semibold" to={`/compras/${avaliacao.id}/nota`} target="_blank">Imprimir nota de compra</Link>
           </Aviso>
+          {tx.ocorrencia_ativa && <Aviso tom="bloqueio" titulo={`Consta declaração de ${tx.ocorrencia_ativa.tipo} pelo titular registrado`}>{tx.ocorrencia_ativa.bo_numero ? `B.O. ${tx.ocorrencia_ativa.bo_numero} · ` : ""}declarada em {new Date(tx.ocorrencia_ativa.declarada_em).toLocaleDateString("pt-BR")}. O registro desta compra não pode ser concluído enquanto a declaração estiver ativa. O sistema registra, não acusa — oriente o cliente a procurar o titular registrado ou a polícia.</Aviso>}
           {avaliacao.imei_pendente ? (
             <CompletarImei avaliacao={avaliacao} onFeito={async (a) => { setAvaliacao(a); await recarregarTx(a.transaction_id!); }} />
           ) : (

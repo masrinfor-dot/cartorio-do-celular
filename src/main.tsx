@@ -19,6 +19,7 @@ import { Avaliacao } from "@/pages/Avaliacao.tsx";
 import { Compras } from "@/pages/Compras.tsx";
 import { NotaCompra, NotaVenda } from "@/pages/Notas.tsx";
 import { Configuracoes } from "@/pages/Configuracoes.tsx";
+import { PortalPf, PfProtegida, PfEntrar, PfMeusAparelhos, PfVender, PfVenda, PfComunicar, PfOcorrencia } from "@/pages/PortalPf.tsx";
 
 function Protegida() {
   const { sessao, carregando } = useSession();
@@ -41,6 +42,17 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           {/* Pública, sem layout e sem sessão: o cliente abre no celular dele */}
           <Route path="/aceite/:token" element={<Aceite />} />
+          {/* Portal da pessoa física — sessão própria, sem loja */}
+          <Route path="/pf" element={<PortalPf />}>
+            <Route path="entrar" element={<PfEntrar />} />
+            <Route element={<PfProtegida />}>
+              <Route index element={<PfMeusAparelhos />} />
+              <Route path="vender/:deviceId" element={<PfVender />} />
+              <Route path="venda/:txId" element={<PfVenda />} />
+              <Route path="comunicar/:deviceId" element={<PfComunicar />} />
+              <Route path="ocorrencia/:deviceId" element={<PfOcorrencia />} />
+            </Route>
+          </Route>
           {/* Notas para impressão: sem layout */}
           <Route element={<Protegida />}>
             <Route path="/compras/:id/nota" element={<NotaCompra />} />

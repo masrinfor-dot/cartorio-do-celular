@@ -65,6 +65,16 @@ export interface EventoView {
   dados: Record<string, unknown>;
 }
 
+/** Declaração ativa de furto/roubo/perda feita pelo titular registrado — sem PII. */
+export interface OcorrenciaView {
+  tipo: "furto" | "roubo" | "perda";
+  bo_numero: string | null;
+  bo_data: string | null;
+  cidade: string | null;
+  uf: string | null;
+  declarada_em: string;
+}
+
 export interface BuscaAparelho {
   encontrado: boolean;
   device?: DeviceView;
@@ -72,6 +82,7 @@ export interface BuscaAparelho {
   linha_do_tempo: EventoView[];
   /** true quando a loja é a titular atual (permite revenda). */
   loja_e_titular?: boolean;
+  ocorrencia_ativa?: OcorrenciaView | null;
 }
 
 export type CriarAparelhoResultado =
@@ -100,6 +111,8 @@ export interface TransacaoView {
   check: CheckOutcome | null;
   media: MediaView[];
   aceite: AcceptanceStatus;
+  /** Declaração ativa de furto/roubo/perda pelo titular registrado — bloqueia a conclusão. */
+  ocorrencia_ativa?: OcorrenciaView | null;
   /** Situação dos convites vivos (nunca token, nunca código). */
   convites: Array<{ invite_id: string; party_id: string; terms_version: number; destino_mascarado: string | null; consumed_at: string | null; revoked_at: string | null; expires_at: string }>;
 }
@@ -142,6 +155,37 @@ export interface PassaporteResultado {
   elos?: number;
   linha_do_tempo?: EventoView[];
   limites?: string;
+  ocorrencia_ativa?: OcorrenciaView | null;
+}
+
+// ---------------------------------------------------------------------------
+// Portal da pessoa física — "Meus aparelhos" (benchmark da Carteira Digital)
+// ---------------------------------------------------------------------------
+
+export interface PfSession {
+  party_id: string;
+  primeiro_nome: string;
+  display_name: string;
+  telefone_mascarado: string;
+}
+
+export interface MeuAparelho {
+  device: DeviceView;
+  desde: string;
+  protocolo_entrada: string | null;
+  link_certificado: string | null;
+  /** Intenção de venda aberta (PF→PF) partindo deste aparelho. */
+  intencao: { transaction_id: string; state: TransactionState; comprador: string; comprador_aceitou: boolean; vendedor_confirmou: boolean; declarada: boolean } | null;
+  ocorrencia_ativa: OcorrenciaView | null;
+}
+
+export interface IniciarVendaPf {
+  device_id: string;
+  comprador: { cpf: string; nome: string; telefone: string };
+  valor_centavos: number;
+  forma_pagamento: string;
+  estado_aparelho: string;
+  defeitos: string;
 }
 
 export interface CertificadoView {
@@ -380,6 +424,26 @@ export interface RegistryApi {
   };
 
   notaVenda(transaction_id: string): Promise<NotaVenda>;
+
+  /** Portal da pessoa física. Sessão própria (CPF + código no WhatsApp), sem loja. */
+  pf: {
+    sessao(): Promise<PfSession | null>;
+    pedirCodigo(dados: { cpf: string; telefone: string; nome?: string }): Promise<{ destino_mascarado: string; novo_cadastro: boolean }>;
+    confirmar(codigo: string): Promise<PfSession>;
+    sair(): Promise<void>;
+    meusAparelhos(): Promise<MeuAparelho[]>;
+    transacao(transaction_id: string): Promise<TransacaoView>;
+    /** Vender: o comprador aceita primeiro no celular dele; o vendedor confirma por último. */
+    iniciarVenda(dados: IniciarVendaPf): Promise<TransacaoView>;
+    enviarFoto(transaction_id: string, slot: MediaSlot, arquivo: File | Blob): Promise<MediaView>;
+    reenviarConvite(transaction_id: string): Promise<ConviteCriado>;
+    confirmarVenda(transaction_id: string): Promise<ConclusaoResultado>;
+    cancelarVenda(transaction_id: string): Promise<void>;
+    /** Comunicação de venda: declaração unilateral do vendedor; vira elo forte se o comprador aceitar depois. */
+    comunicarVenda(dados: { device_id: string; comprador: { cpf: string; nome?: string; telefone?: string }; data_venda: string; valor_centavos?: number }): Promise<TransacaoView>;
+    registrarOcorrencia(dados: { device_id: string; tipo: "furto" | "roubo" | "perda"; bo_numero?: string; bo_data?: string; cidade?: string; uf?: string }): Promise<OcorrenciaView>;
+    retirarOcorrencia(device_id: string, motivo: string): Promise<void>;
+  };
 
   erp: {
     enviar(transaction_id: string): Promise<ErpEnvio>;

@@ -363,6 +363,7 @@ function EtapaAparelho({ ocupado, executar, onVoltar, onPronto }: { ocupado: boo
       {existente?.device && (
         <Aviso tom="info" titulo="Este aparelho já passou pelo Cartório">
           <p>{[existente.device.brand, existente.device.model, existente.device.storage, existente.device.color].filter(Boolean).join(" ")} · {existente.elos} elo(s) registrado(s)</p>
+          {existente.ocorrencia_ativa && <p className="mt-1 font-bold text-red-800">Consta declaração de {existente.ocorrencia_ativa.tipo} pelo titular registrado{existente.ocorrencia_ativa.bo_numero ? ` (B.O. ${existente.ocorrencia_ativa.bo_numero})` : ""} em {new Date(existente.ocorrencia_ativa.declarada_em).toLocaleDateString("pt-BR")}. Este registro não poderá ser concluído enquanto a declaração estiver ativa.</p>}
           <LinhaDoTempo eventos={existente.linha_do_tempo} compacta />
           <p className="mt-1">Isso muda a conversa no balcão. O aparelho não será cadastrado de novo — a passagem entra na corrente dele.</p>
         </Aviso>
@@ -605,7 +606,7 @@ const ROTULO_MODALIDADE: Record<string, string> = { pf_pj: "pessoa → loja", pj
 
 export function LinhaDoTempo({ eventos, compacta }: { eventos: Array<{ tipo: string; data: string; dados: Record<string, unknown> }>; compacta?: boolean }) {
   if (!eventos.length) return null;
-  const rot: Record<string, string> = { device_created: "Aparelho cadastrado", transfer_completed: "Passagem de mão registrada", check_performed: "Consulta de procedência", chain_gap: "Passagem sem registro entre titulares" };
+  const rot: Record<string, string> = { device_created: "Aparelho cadastrado", transfer_completed: "Passagem de mão registrada", check_performed: "Consulta de procedência", chain_gap: "Passagem sem registro entre titulares", imei_completed: "IMEI completado", sale_declared: "Venda declarada pelo titular", theft_declared: "Ocorrência declarada pelo titular", theft_withdrawn: "Declaração de ocorrência retirada" };
   return (
     <ol className={`${compacta ? "mt-2 text-xs" : "text-sm"} space-y-1`}>
       {eventos.map((e, i) => (
@@ -613,7 +614,8 @@ export function LinhaDoTempo({ eventos, compacta }: { eventos: Array<{ tipo: str
           <span className="text-slate-500 whitespace-nowrap">{formatarData(e.data)}</span>
           <span className="font-semibold">{rot[e.tipo] ?? e.tipo}</span>
           {e.tipo === "transfer_completed" && <span className="text-slate-600">{ROTULO_MODALIDADE[String(e.dados.modalidade)] ?? String(e.dados.modalidade ?? "")} · protocolo {String(e.dados.protocolo ?? "")} {e.dados.aceite === "assistido" && <span className="selo selo-assistido ml-1">aceite assistido</span>}</span>}
-          {e.tipo === "chain_gap" && <span className="text-slate-600">{String(e.dados.aviso ?? "")}</span>}
+          {(e.tipo === "chain_gap" || e.tipo === "sale_declared" || e.tipo === "theft_withdrawn") && <span className="text-slate-600">{String(e.dados.aviso ?? "")}{e.tipo === "sale_declared" && e.dados.data_venda ? ` Data declarada da venda: ${formatarData(String(e.dados.data_venda))}.` : ""}</span>}
+          {e.tipo === "theft_declared" && <span className="text-red-800">{String(e.dados.aviso ?? "")}</span>}
         </li>
       ))}
     </ol>

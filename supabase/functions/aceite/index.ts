@@ -5,11 +5,12 @@
 //   op "codigo"   → gera o código, grava só o HMAC, envia para o WhatsApp da parte
 //   op "confirmar"→ compara em tempo constante; 5 erros queimam; 10 min
 import {
-  DomainError, OTP_MAX_ATTEMPTS, OTP_TTL_MS, formatarCentavos, gerarOtp, hashOtp, iguaisTempoConstante, onlyDigits, primeiroNome, sha256Hex,
+  DomainError, OTP_MAX_ATTEMPTS, OTP_TTL_MS, formatarCentavos, gerarOtp, hashOtp, iguaisTempoConstante, nomeCurto, onlyDigits, primeiroNome, sha256Hex,
 } from "../_shared/core/index.ts";
 import { adminClient, CORS, env, json, lancarSeErro } from "../_shared/server.ts";
-import { deviceIdDaTx, deviceView, mudarEstado, obterTx, partesDaTx, statusAceite, telefoneDaParte, termosVigentes } from "../_shared/views.ts";
+import { deviceIdDaTx, deviceView, mudarEstado, obterTx, partesDaTx, partyView, statusAceite, telefoneDaParte, termosVigentes } from "../_shared/views.ts";
 import { enviarWhatsapp } from "../_shared/whatsapp.ts";
+import { concluir } from "../_shared/ops.ts";
 
 const INVALIDO = "Este link não é válido ou já foi usado. Peça um novo para a loja.";
 const MUDOU = "As condições mudaram depois que este link foi enviado. Peça um novo para a loja.";
@@ -34,14 +35,15 @@ Deno.serve(async (req) => {
       const parte = (await partesDaTx(admin, t.id)).find((p) => p.party_id === inv.party_id)!;
       const { data: party } = await admin.from("registry_parties").select("display_name").eq("id", inv.party_id).single();
       const dv = await deviceView(admin, await deviceIdDaTx(admin, t.id));
-      const { data: loja } = await admin.from("stores").select("name").eq("id", t.store_id).single();
+      const { data: loja } = t.store_id ? await admin.from("stores").select("name").eq("id", t.store_id).maybeSingle() : { data: null };
+      const outra = (await partesDaTx(admin, t.id)).find((p) => p.party_id !== inv.party_id);
       const p = terms.payload;
       return json({
         valido: true,
         aceito: !!inv.consumed_at,
         primeiro_nome: primeiroNome(party!.display_name as string),
         papel: parte.role,
-        loja: loja!.name,
+        loja: loja ? loja.name : `Venda entre pessoas · ${outra ? nomeCurto((await partyView(admin, outra.party_id)).display_name) : ""}`,
         imei_mascarado: dv?.imei_mascarado,
         aparelho: [dv?.brand, dv?.model, dv?.storage, dv?.color].filter(Boolean).join(" "),
         valor: formatarCentavos(p.valor_centavos),
@@ -101,6 +103,10 @@ Deno.serve(async (req) => {
       if (eAcc && !/registry_acceptances_unique/.test(eAcc.message ?? "")) lancarSeErro(eAcc);
       await admin.from("registry_acceptance_invites").update({ consumed_at: new Date().toISOString() }).eq("id", inv.id);
       await avancar(admin, t);
+      // Entre pessoas (sem loja): quando as duas aceitaram, a transferência conclui sozinha.
+      if (t.kind === "pf_pf" && !t.store_id && (await statusAceite(admin, t)).complete) {
+        try { await concluir(admin, null, t); } catch (e) { console.log("pf_pf: conclusão automática adiada:", e instanceof Error ? e.message : e); }
+      }
       return json({ aceito: true });
     }
 

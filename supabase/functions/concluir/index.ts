@@ -2,10 +2,10 @@
 // os nove passos dentro de UMA transação de banco. Se qualquer passo falhar,
 // nada acontece. A constraint de exclusão impede dois donos; se o banco
 // recusar, o erro é mostrado — nunca contornado.
-import { DomainError, descreverFaltantes, hashTerms, sha256Hex } from "../_shared/core/index.ts";
-import { exigirLoja, servir, traduzirErroBanco } from "../_shared/server.ts";
-import { obterTx, statusAceite, termosVigentes } from "../_shared/views.ts";
-import { montarCertificado } from "../_shared/certificado.ts";
+import { DomainError, sha256Hex } from "../_shared/core/index.ts";
+import { exigirLoja, servir } from "../_shared/server.ts";
+import { obterTx } from "../_shared/views.ts";
+import { concluir } from "../_shared/ops.ts";
 
 servir(async (req, ctx, body) => {
   const { user, store } = exigirLoja(ctx);
@@ -21,21 +21,7 @@ servir(async (req, ctx, body) => {
   }
 
   const t = await obterTx(admin, transaction_id, store.id);
-  const terms = await termosVigentes(admin, t);
-  if (!terms) throw new DomainError("sem_termos", "Confirme as condições antes de concluir.", 409);
-  const st = await statusAceite(admin, t);
-  if (!st.complete) throw new DomainError("aceite_incompleto", descreverFaltantes(st), 409);
-
-  const { data, error } = await admin.rpc("registry_complete_transaction", {
-    p_transaction_id: t.id, p_actor_user_id: user.id, p_grade: st.grade, p_terms_hash: terms.content_hash,
-  });
-  if (error) throw traduzirErroBanco(error);
-  const r = data as { protocolo: string; grade: string; completed_at: string; repetida: boolean };
-
-  // Certificado: conteúdo determinístico → mesmo hash sempre.
-  const conteudo = await montarCertificado(admin, t.id);
-  const content_hash = await hashTerms(conteudo);
-  await admin.from("registry_certificates").insert({ transaction_id: t.id, protocol: r.protocolo, content_hash });
+  const r = await concluir(admin, user.id, t);
   await admin.from("registry_idempotency_keys").insert({ scope: "tx.complete", key, store_id: store.id, request_hash, response: r });
   return { ...r, repetida: false };
 });

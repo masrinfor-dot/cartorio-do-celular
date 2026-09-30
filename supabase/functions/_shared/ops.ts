@@ -4,13 +4,17 @@
 // nunca uma segunda implementação.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
-  DomainError, cifrar, documentoValido, gerarProtocolo, hashDocumento, hashTerms, imeiValido, onlyDigits, sha256Hex, simularConsulta,
+  DomainError, INVITE_TTL_MS, cifrar, descreverFaltantes, documentoValido, gerarProtocolo, gerarToken, hashDocumento, hashTerms, imeiValido, mascararTelefone, onlyDigits, sha256Hex, simularConsulta,
   type TermsPayload, type TransactionKind,
 } from "./core/index.ts";
-import { auditar, env, lancarSeErro } from "./server.ts";
-import { buscaAparelho, deviceIdDaTx, imeiDoDevice, mudarEstado, obterTx, partyView, termosVigentes, type TxRow } from "./views.ts";
+import { auditar, env, lancarSeErro, traduzirErroBanco } from "./server.ts";
+import { buscaAparelho, deviceIdDaTx, imeiDoDevice, mudarEstado, obterTx, partyView, statusAceite, telefoneDaParte, termosVigentes, type TxRow } from "./views.ts";
+import { enviarWhatsapp } from "./whatsapp.ts";
+import { montarCertificado } from "./certificado.ts";
 
 export interface OpCtx { store: { id: string; name: string; party_id: string | null }; user: { id: string }; ip: string | null }
+/** Contexto sem loja e sem usuário de loja — portal PF e conclusão automática. */
+export interface OpCtxLivre { store: { id: string } | null; user: { id: string } | null; ip: string | null }
 
 const MSG_IMEI = "Esse IMEI não confere. Confira os 15 dígitos — provavelmente há um número trocado.";
 
@@ -128,12 +132,12 @@ export async function congelarTermos(admin: SupabaseClient, ctx: OpCtx, t: TxRow
 }
 
 /** Consulta de procedência DESTA transação (simulador com contrato de provedor real). */
-export async function executarConsulta(admin: SupabaseClient, ctx: OpCtx, t: TxRow) {
+export async function executarConsulta(admin: SupabaseClient, ctx: OpCtxLivre, t: TxRow) {
   const device_id = await deviceIdDaTx(admin, t.id);
   const imei = await imeiDoDevice(admin, device_id);
   if (!imei) throw new DomainError("imei_pendente", "Este aparelho ainda não tem IMEI. Complete o IMEI antes da consulta.", 409);
   const out = simularConsulta(imei);
-  const { error } = await admin.from("registry_device_checks").insert({ device_id, transaction_id: t.id, ...out, created_by: ctx.user.id });
+  const { error } = await admin.from("registry_device_checks").insert({ device_id, transaction_id: t.id, ...out, created_by: ctx.user?.id ?? null });
   lancarSeErro(error);
   if (t.state === "awaiting_data") await mudarEstado(admin, t, "awaiting_checks");
   if (t.state === "awaiting_checks" || t.state === "under_review") {
@@ -141,6 +145,54 @@ export async function executarConsulta(admin: SupabaseClient, ctx: OpCtx, t: TxR
     else if (out.result === "restricted") await mudarEstado(admin, t, "blocked");
     else if (out.result === "inconclusive" && t.state !== "under_review") await mudarEstado(admin, t, "under_review");
   }
-  await admin.from("registry_device_events").insert({ device_id, store_id: ctx.store.id, type: "check_performed", visibility: "tenant", transaction_id: t.id, payload: { resultado: out.result, fonte: out.provider, data: out.checked_at }, created_by: ctx.user.id });
+  await admin.from("registry_device_events").insert({ device_id, store_id: ctx.store?.id ?? null, type: "check_performed", visibility: "tenant", transaction_id: t.id, payload: { resultado: out.result, fonte: out.provider, data: out.checked_at }, created_by: ctx.user?.id ?? null });
   return out;
+}
+
+/** Convite de aceite para uma parte (loja ou portal PF). O link volta UMA vez; o código nasce depois, na rota pública. */
+export async function criarConvite(admin: SupabaseClient, ctx: OpCtxLivre, t: TxRow, party_id: string, remetente: string) {
+  const terms = await termosVigentes(admin, t);
+  if (!terms) throw new DomainError("sem_termos", "Confirme as condições antes de enviar o código.", 409);
+  const telefone = await telefoneDaParte(admin, party_id);
+  if (!telefone) throw new DomainError("sem_telefone", "Essa pessoa não tem telefone cadastrado — e o código só chega por ele.", 409);
+  const agora = new Date();
+  const token = gerarToken();
+  const token_hash = await sha256Hex(token);
+  const { data: vivo } = await admin.from("registry_acceptance_invites").select("id, expires_at")
+    .eq("transaction_id", t.id).eq("party_id", party_id).eq("terms_version", terms.version).is("consumed_at", null).is("revoked_at", null).maybeSingle();
+  let invite_id: string;
+  let reaproveitado = false;
+  if (vivo && new Date(vivo.expires_at as string) > agora) {
+    const { error } = await admin.from("registry_acceptance_invites").update({ token_hash }).eq("id", vivo.id);
+    lancarSeErro(error);
+    invite_id = vivo.id as string; reaproveitado = true;
+  } else {
+    if (vivo) await admin.from("registry_acceptance_invites").update({ revoked_at: agora.toISOString(), revoked_reason: "expirado" }).eq("id", vivo.id);
+    const { data, error } = await admin.from("registry_acceptance_invites").insert({
+      transaction_id: t.id, party_id, terms_version: terms.version, terms_hash: terms.content_hash, token_hash,
+      destination_masked: mascararTelefone(telefone), expires_at: new Date(agora.getTime() + INVITE_TTL_MS).toISOString(), created_by: ctx.user?.id ?? null,
+    }).select("id").single();
+    lancarSeErro(error);
+    invite_id = data!.id as string;
+  }
+  const link = `${env("PUBLIC_APP_URL").replace(/\/$/, "")}/aceite/${token}`;
+  await enviarWhatsapp(telefone, `Cartório do Celular — ${remetente}. Para confirmar, abra o link e informe o código que vai chegar aqui: ${link}`);
+  await auditar(admin, ctx.store?.id ?? null, ctx.user?.id ?? null, "invite.sent", "invite", invite_id, { party_id, terms_version: terms.version, reaproveitado }, ctx.ip);
+  return { invite_id, link, destino_mascarado: mascararTelefone(telefone), expires_at: new Date(agora.getTime() + INVITE_TTL_MS).toISOString(), reaproveitado };
+}
+
+/** Conclusão (os nove passos, no banco) + certificado. Para loja, portal PF e conclusão automática. */
+export async function concluir(admin: SupabaseClient, actor_user_id: string | null, t: TxRow) {
+  const terms = await termosVigentes(admin, t);
+  if (!terms) throw new DomainError("sem_termos", "Confirme as condições antes de concluir.", 409);
+  const st = await statusAceite(admin, t);
+  if (!st.complete) throw new DomainError("aceite_incompleto", descreverFaltantes(st), 409);
+  const { data, error } = await admin.rpc("registry_complete_transaction", { p_transaction_id: t.id, p_actor_user_id: actor_user_id, p_grade: st.grade, p_terms_hash: terms.content_hash });
+  if (error) throw traduzirErroBanco(error);
+  const r = data as { protocolo: string; grade: string; completed_at: string; repetida: boolean };
+  if (!r.repetida) {
+    const conteudo = await montarCertificado(admin, t.id);
+    await admin.from("registry_certificates").insert({ transaction_id: t.id, protocol: r.protocolo, content_hash: await hashTerms(conteudo) });
+  }
+  return r;
 }

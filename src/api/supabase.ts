@@ -39,6 +39,12 @@ async function fnMultipart<T>(nome: string, form: FormData): Promise<T> {
   return json as T;
 }
 
+/** Portal PF: sessão própria por token (cabeçalho X-PF-Token), nunca a sessão da loja. */
+async function fnPf<T>(op: string, body: Record<string, unknown>): Promise<T> {
+  let tok = ""; try { tok = localStorage.getItem("cdc-pf-token") ?? ""; } catch { /* */ }
+  return fn<T>("pf", { op, ...body }, { publico: true, headers: { "X-PF-Token": tok } });
+}
+
 async function sessaoAtual(): Promise<Session | null> {
   const { data } = await sb().auth.getUser();
   if (!data.user) return null;
@@ -122,6 +128,39 @@ export const supabaseApi: RegistryApi = {
   erp: {
     enviar: (transaction_id) => fn("erp", { op: "enviar", transaction_id }),
     envios: (transaction_id) => fn("erp", { op: "envios", transaction_id }),
+  },
+  pf: {
+    sessao: () => fnPf("sessao", {}),
+    async pedirCodigo(dados) {
+      try { sessionStorage.setItem("cdc-pf-cpf", dados.cpf); } catch { /* */ }
+      return fnPf("pedir_codigo", dados);
+    },
+    async confirmar(codigo) {
+      let cpf = ""; try { cpf = sessionStorage.getItem("cdc-pf-cpf") ?? ""; } catch { /* */ }
+      const r = await fnPf<{ token: string; sessao: import("./types.ts").PfSession }>("confirmar", { codigo, cpf });
+      try { sessionStorage.removeItem("cdc-pf-cpf"); } catch { /* */ }
+      try { localStorage.setItem("cdc-pf-token", r.token); } catch { /* */ }
+      return r.sessao;
+    },
+    async sair() { try { localStorage.removeItem("cdc-pf-token"); } catch { /* */ } },
+    meusAparelhos: () => fnPf("meus_aparelhos", {}),
+    transacao: (transaction_id) => fnPf("transacao", { transaction_id }),
+    iniciarVenda: (dados) => fnPf("iniciar_venda", { ...dados }),
+    async enviarFoto(transaction_id, slot, arquivo) {
+      const f = new FormData();
+      f.append("transaction_id", transaction_id); f.append("slot", slot); f.append("arquivo", arquivo);
+      let tok = ""; try { tok = localStorage.getItem("cdc-pf-token") ?? ""; } catch { /* */ }
+      const res = await fetch(`${url}/functions/v1/pf`, { method: "POST", headers: { apikey: anon, Authorization: `Bearer ${anon}`, "X-PF-Token": tok }, body: f });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.error) throw new DomainError(json?.error?.code ?? "erro", json?.error?.message ?? "Falha ao enviar a foto.", res.status);
+      return json;
+    },
+    reenviarConvite: (transaction_id) => fnPf("reenviar_convite", { transaction_id }),
+    confirmarVenda: (transaction_id) => fnPf("confirmar_venda", { transaction_id }),
+    cancelarVenda: (transaction_id) => fnPf("cancelar_venda", { transaction_id }),
+    comunicarVenda: (dados) => fnPf("comunicar_venda", dados),
+    registrarOcorrencia: (dados) => fnPf("registrar_ocorrencia", dados),
+    retirarOcorrencia: (device_id, motivo) => fnPf("retirar_ocorrencia", { device_id, motivo }),
   },
   publico: {
     async passaporte(imei) {

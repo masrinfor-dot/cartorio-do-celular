@@ -16,7 +16,7 @@ import {
 import { lancarSeErro } from "./server.ts";
 
 export interface TxRow {
-  id: string; store_id: string; kind: TransactionKind; state: TransactionState; public_protocol: string;
+  id: string; store_id: string | null; kind: TransactionKind; state: TransactionState; public_protocol: string;
   current_terms_version: number; created_at: string; updated_at: string; completed_at: string | null; created_by: string | null;
 }
 
@@ -90,6 +90,12 @@ export async function linhaDoTempo(admin: SupabaseClient, device_id: string, sto
   return (data ?? []).map((e) => ({ tipo: e.type as string, data: e.created_at as string, dados: e.payload as Record<string, unknown> }));
 }
 
+/** Declaração ativa de furto/roubo/perda pelo titular registrado — sem PII. */
+export async function ocorrenciaAtiva(admin: SupabaseClient, device_id: string) {
+  const { data } = await admin.from("registry_device_flags").select("tipo, bo_numero, bo_data, cidade, uf, created_at").eq("device_id", device_id).eq("kind", "theft_declared").eq("active", true).maybeSingle();
+  return data ? { tipo: data.tipo as "furto" | "roubo" | "perda", bo_numero: data.bo_numero as string | null, bo_data: data.bo_data as string | null, cidade: data.cidade as string | null, uf: data.uf as string | null, declarada_em: data.created_at as string } : null;
+}
+
 export async function buscaAparelho(admin: SupabaseClient, device_id: string, store: { id: string; party_id: string | null } | null) {
   const dv = await deviceView(admin, device_id);
   if (!dv) return { encontrado: false, elos: 0, linha_do_tempo: [] };
@@ -101,6 +107,7 @@ export async function buscaAparelho(admin: SupabaseClient, device_id: string, st
     elos: count ?? 0,
     linha_do_tempo: await linhaDoTempo(admin, device_id, store?.id),
     loja_e_titular: !!titular && !!store?.party_id && titular.party_id === store.party_id,
+    ocorrencia_ativa: await ocorrenciaAtiva(admin, device_id),
   };
 }
 
@@ -124,6 +131,7 @@ export async function txView(admin: SupabaseClient, t: TxRow) {
     check: await checkDaTx(admin, t.id),
     media: mediaViews,
     aceite: await statusAceite(admin, t),
+    ocorrencia_ativa: device_id ? await ocorrenciaAtiva(admin, device_id) : null,
     convites: (convites ?? []).map((c) => ({ invite_id: c.id, party_id: c.party_id, terms_version: c.terms_version, destino_mascarado: c.destination_masked, consumed_at: c.consumed_at, revoked_at: c.revoked_at, expires_at: c.expires_at })),
   };
 }

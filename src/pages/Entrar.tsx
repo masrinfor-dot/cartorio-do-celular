@@ -54,6 +54,7 @@ export function Entrar() {
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
         Só quer consultar um aparelho? <Link className="text-teal-800 underline" to="/passaporte">Consultar passaporte</Link>
+        <br />É pessoa física? <Link className="text-teal-800 underline" to="/pf/entrar">Meus aparelhos</Link>
       </p>
     </div>
   );
