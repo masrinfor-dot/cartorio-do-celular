@@ -50,6 +50,7 @@ import {
   type TransactionKind,
   type TransactionParty,
   type TransactionState,
+  deveExpirar,
 } from "@core/index.ts";
 import type {
   BuscaAparelho,
@@ -241,6 +242,20 @@ function mudarEstadoInterno(t: DB["transactions"][number], novo: TransactionStat
   exigirTransicao(t.state, novo);
   t.state = novo;
   t.updated_at = agora();
+}
+/** Demonstração não tem rotina agendada: expira as paradas na hora de ler. Mesma regra do servidor. */
+function expirarParadasDemo(): number {
+  const agoraD = new Date();
+  let n = 0;
+  for (const t of db.transactions) {
+    if (!deveExpirar(t.state, t.updated_at, agoraD)) continue;
+    mudarEstadoInterno(t, "expired");
+    for (const i of db.invites) if (i.transaction_id === t.id && !i.consumed_at && !i.revoked_at) { i.revoked_at = agora(); i.revoked_reason = "expirado"; }
+    auditar(t.store_id, null, "tx.expired", "transaction", t.id, { parada_desde: t.updated_at });
+    n++;
+  }
+  if (n) salvar();
+  return n;
 }
 function linhaDoTempo(device_id: string, publicOnly: boolean, store_id?: string) {
   return db.device_events
@@ -467,6 +482,7 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda" | "pf"
     async listar() {
       await delay(40);
       const s = exigirSessao();
+      expirarParadasDemo();
       return db.transactions.filter((t) => t.store_id === s.store.id).sort((a, b) => b.created_at.localeCompare(a.created_at)).map((t) => txView(t.id));
     },
     async mudarEstado(id, novo) {
@@ -914,6 +930,7 @@ export const demoInternals = {
   /** Sessão com loja obrigatória, no formato { user: {id}, store }. */
   sessao: () => { const s = exigirSessao(); return { user: { id: s.user_id, email: s.email }, store: s.store }; },
   salvar,
+  expirarParadasDemo,
   row,
   agora,
   delay,

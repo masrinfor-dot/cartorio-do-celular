@@ -6,7 +6,7 @@
 
 import {
   DomainError, OTP_MAX_ATTEMPTS, OTP_TTL_MS, UNIQUE_MEDIA_SLOTS, cpfValido, gerarOtp, gerarProtocolo, gerarToken, hashTerms, iguaisTempoConstante,
-  mascararTelefone, nomeCurto, onlyDigits, primeiroNome, sha256Hex,
+  expiraEm, garantiaDe, mascararTelefone, nomeCurto, onlyDigits, primeiroNome, sha256Hex,
 } from "@core/index.ts";
 import type { ConviteCriado, MeuAparelho, PfSession, RegistryApi, TransacaoView } from "./types.ts";
 import { demoInternals as I } from "./demo.ts";
@@ -137,6 +137,7 @@ export const demoPfApi: Pick<RegistryApi, "pf"> = {
     async meusAparelhos(): Promise<MeuAparelho[]> {
       await I.delay(40);
       const s = await exigirPf();
+      I.expirarParadasDemo();
       const db = I.db();
       const base = `${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}`;
       return db.ownership_periods.filter((o) => o.party_id === s.party_id && !o.ended_at).sort((a, b) => b.started_at.localeCompare(a.started_at)).map((o) => {
@@ -149,9 +150,10 @@ export const demoPfApi: Pick<RegistryApi, "pf"> = {
           const st = I.statusAceite(intencao.id);
           const buyer = db.transaction_parties.find((p) => p.transaction_id === intencao.id && p.role === "buyer")!;
           const terms = I.termosVigentes(intencao.id);
-          intView = { transaction_id: intencao.id, state: intencao.state, comprador: nomeCurto(I.partyView(buyer.party_id).display_name), comprador_aceitou: st.accepted.some((p) => p.role === "buyer"), vendedor_confirmou: st.accepted.some((p) => p.role === "seller"), declarada: terms?.payload.declaracoes?.origem === "comunicacao_de_venda" };
+          intView = { transaction_id: intencao.id, state: intencao.state, comprador: nomeCurto(I.partyView(buyer.party_id).display_name), comprador_aceitou: st.accepted.some((p) => p.role === "buyer"), vendedor_confirmou: st.accepted.some((p) => p.role === "seller"), declarada: terms?.payload.declaracoes?.origem === "comunicacao_de_venda", expira_em: expiraEm(intencao.updated_at) };
         }
-        return { device: I.deviceView(o.device_id)!, desde: o.started_at, protocolo_entrada: tEnt?.public_protocol ?? null, link_certificado: tEnt?.state === "completed" ? `${base}/certificado/${tEnt.public_protocol}` : null, intencao: intView, ocorrencia_ativa: I.ocorrenciaAtiva(o.device_id) };
+        const termosEnt = tEnt?.state === "completed" ? I.termosVigentes(tEnt.id) : null;
+        return { device: I.deviceView(o.device_id)!, desde: o.started_at, protocolo_entrada: tEnt?.public_protocol ?? null, link_certificado: tEnt?.state === "completed" ? `${base}/certificado/${tEnt.public_protocol}` : null, intencao: intView, garantia: termosEnt ? garantiaDe(tEnt!.completed_at, termosEnt.payload.garantia) : null, ocorrencia_ativa: I.ocorrenciaAtiva(o.device_id) };
       });
     },
 

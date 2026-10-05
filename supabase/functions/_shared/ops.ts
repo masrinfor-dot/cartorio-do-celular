@@ -4,11 +4,11 @@
 // nunca uma segunda implementação.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
-  DomainError, INVITE_TTL_MS, cifrar, descreverFaltantes, documentoValido, gerarProtocolo, gerarToken, hashDocumento, hashTerms, imeiValido, mascararTelefone, onlyDigits, sha256Hex, simularConsulta,
+  DomainError, INVITE_TTL_MS, LEMBRETE_GARANTIA_DIAS, deveExpirar, garantiaDe, nomeCurto, cifrar, descreverFaltantes, documentoValido, gerarProtocolo, gerarToken, hashDocumento, hashTerms, imeiValido, mascararTelefone, onlyDigits, sha256Hex, simularConsulta,
   type TermsPayload, type TransactionKind,
 } from "./core/index.ts";
 import { auditar, env, lancarSeErro, traduzirErroBanco } from "./server.ts";
-import { buscaAparelho, deviceIdDaTx, imeiDoDevice, mudarEstado, obterTx, partyView, statusAceite, telefoneDaParte, termosVigentes, type TxRow } from "./views.ts";
+import { buscaAparelho, deviceIdDaTx, deviceView, imeiDoDevice, mudarEstado, obterTx, partyView, statusAceite, telefoneDaParte, termosVigentes, type TxRow } from "./views.ts";
 import { enviarWhatsapp } from "./whatsapp.ts";
 import { montarCertificado } from "./certificado.ts";
 
@@ -195,4 +195,59 @@ export async function concluir(admin: SupabaseClient, actor_user_id: string | nu
     await admin.from("registry_certificates").insert({ transaction_id: t.id, protocol: r.protocolo, content_hash: await hashTerms(conteudo) });
   }
   return r;
+}
+
+// ───────── Manutenção: expiração de paradas e lembrete de garantia ─────────
+
+/** Expira UMA transação se estiver parada além do prazo. Usa o motor de estados e revoga convites vivos. */
+export async function expirarSeParada(admin: SupabaseClient, t: TxRow, agora = new Date()): Promise<boolean> {
+  if (!deveExpirar(t.state, t.updated_at, agora)) return false;
+  await mudarEstado(admin, t, "expired");
+  await admin.from("registry_acceptance_invites").update({ revoked_at: agora.toISOString(), revoked_reason: "expirado" }).eq("transaction_id", t.id).is("consumed_at", null).is("revoked_at", null);
+  await auditar(admin, t.store_id, null, "tx.expired", "transaction", t.id, { parada_desde: t.updated_at });
+  return true;
+}
+
+/** Varre as transações abertas e expira as paradas. Devolve quantas expirou. */
+export async function expirarPendentes(admin: SupabaseClient, agora = new Date()): Promise<number> {
+  const limite = new Date(agora.getTime() - 7 * 86_400_000).toISOString();
+  const { data, error } = await admin.from("registry_transactions").select("*").lt("updated_at", limite)
+    .in("state", ["draft", "awaiting_data", "awaiting_checks", "awaiting_seller", "awaiting_buyer", "ready_to_complete", "under_review"]).limit(500);
+  lancarSeErro(error);
+  let n = 0;
+  for (const t of (data ?? []) as TxRow[]) if (await expirarSeParada(admin, t, agora)) n++;
+  return n;
+}
+
+/**
+ * Avisa o COMPRADOR (pelo WhatsApp dele) quando a garantia está para acabar.
+ * Uma vez só por transação. Se o WhatsApp falhar, não marca como enviado: tenta
+ * de novo na próxima rodada.
+ */
+export async function lembrarGarantias(admin: SupabaseClient, agora = new Date()): Promise<{ avisados: number; falhas: number }> {
+  const desde = new Date(agora.getTime() - 400 * 86_400_000).toISOString();
+  const { data, error } = await admin.from("registry_transactions").select("*").eq("state", "completed").gte("completed_at", desde).limit(1000);
+  lancarSeErro(error);
+  let avisados = 0, falhas = 0;
+  for (const t of (data ?? []) as TxRow[]) {
+    const terms = await termosVigentes(admin, t);
+    const g = terms ? garantiaDe(t.completed_at, terms.payload.garantia, agora) : null;
+    if (!g || g.situacao !== "vence_em_breve") continue;
+    const { data: ja } = await admin.from("registry_reminders").select("id").eq("transaction_id", t.id).eq("kind", "warranty_expiring").maybeSingle();
+    if (ja) continue;
+    const { data: partes } = await admin.from("registry_transaction_parties").select("party_id").eq("transaction_id", t.id).eq("role", "buyer").limit(1).maybeSingle();
+    if (!partes) continue;
+    const tel = await telefoneDaParte(admin, partes.party_id as string);
+    if (!tel) continue;
+    const dv = await deviceView(admin, await deviceIdDaTx(admin, t.id));
+    const nome = [dv?.brand, dv?.model].filter(Boolean).join(" ") || "seu aparelho";
+    const quando = new Date(g.ate).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    try {
+      await enviarWhatsapp(tel, `Cartório do Celular: a garantia do ${nome} (${g.texto}) termina em ${quando}, daqui a ${Math.max(g.dias_restantes, 0)} dia(s). Se algo não está bem, procure a loja antes dessa data. Protocolo ${t.public_protocol}.`);
+      await admin.from("registry_reminders").insert({ transaction_id: t.id, party_id: partes.party_id, kind: "warranty_expiring" });
+      await auditar(admin, t.store_id, null, "reminder.warranty_sent", "transaction", t.id, { dias_restantes: g.dias_restantes });
+      avisados++;
+    } catch { falhas++; }
+  }
+  return { avisados, falhas };
 }

@@ -127,10 +127,17 @@ export function PfMeusAparelhos() {
             </div>
             {a.link_certificado && <a className="text-sm text-teal-800 underline" href={a.link_certificado} target="_blank" rel="noreferrer">Certificado</a>}
           </div>
+          {a.garantia && (
+            <p data-testid="garantia" className={`text-sm ${a.garantia.situacao === "vence_em_breve" ? "font-semibold text-amber-900" : "text-slate-600"}`}>
+              {a.garantia.situacao === "vencida" ? `Garantia (${a.garantia.texto}) terminou em ${formatarData(a.garantia.ate)}.`
+                : a.garantia.situacao === "vence_em_breve" ? `Garantia termina em ${a.garantia.dias_restantes} dia(s), em ${formatarData(a.garantia.ate)}. Se algo não está bem, procure a loja antes.`
+                : `Garantia (${a.garantia.texto}) até ${formatarData(a.garantia.ate)}.`}
+            </p>
+          )}
           {a.ocorrencia_ativa && <Aviso tom="alerta" titulo={`Declaração de ${a.ocorrencia_ativa.tipo} ativa`}>Registrada em {formatarData(a.ocorrencia_ativa.declarada_em)}{a.ocorrencia_ativa.bo_numero ? ` · B.O. ${a.ocorrencia_ativa.bo_numero}` : ""}. Aparece no passaporte público e impede qualquer transferência até você retirá-la.</Aviso>}
           {a.intencao && (
             <Aviso tom="info" titulo={a.intencao.declarada ? "Venda comunicada — aguardando o comprador confirmar" : `Venda em andamento para ${a.intencao.comprador}`}>
-              {a.intencao.comprador_aceitou ? "O comprador já aceitou." : "O comprador ainda não aceitou no celular dele."} <Link className="underline font-semibold" to={`/pf/venda/${a.intencao.transaction_id}`}>Ver venda</Link>
+              {a.intencao.comprador_aceitou ? "O comprador já aceitou." : "O comprador ainda não aceitou no celular dele."} Se ninguém mexer, esta venda expira em {formatarData(a.intencao.expira_em)}. <Link className="underline font-semibold" to={`/pf/venda/${a.intencao.transaction_id}`}>Ver venda</Link>
             </Aviso>
           )}
           <div className="flex flex-wrap gap-2">

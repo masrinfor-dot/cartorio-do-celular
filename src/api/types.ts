@@ -10,6 +10,7 @@ import type {
   AcceptanceGrade,
   AcceptanceStatus,
   CheckOutcome,
+  GarantiaView,
   MediaSlot,
   PartyKind,
   TermsPayload,
@@ -175,7 +176,9 @@ export interface MeuAparelho {
   protocolo_entrada: string | null;
   link_certificado: string | null;
   /** Intenção de venda aberta (PF→PF) partindo deste aparelho. */
-  intencao: { transaction_id: string; state: TransactionState; comprador: string; comprador_aceitou: boolean; vendedor_confirmou: boolean; declarada: boolean } | null;
+  intencao: { transaction_id: string; state: TransactionState; comprador: string; comprador_aceitou: boolean; vendedor_confirmou: boolean; declarada: boolean; expira_em: string } | null;
+  /** Garantia declarada na compra, contada da conclusão do registro. Null se não houver prazo legível. */
+  garantia: GarantiaView | null;
   ocorrencia_ativa: OcorrenciaView | null;
 }
 

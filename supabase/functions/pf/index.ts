@@ -6,12 +6,12 @@
 //   comunicar_venda · registrar_ocorrencia · retirar_ocorrencia
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
-  DomainError, OTP_MAX_ATTEMPTS, OTP_TTL_MS, UNIQUE_MEDIA_SLOTS, cifrar, cpfValido, detectarTipo, gerarOtp, gerarProtocolo, gerarToken, hashDocumento, hashOtp,
+  DomainError, OTP_MAX_ATTEMPTS, expiraEm, garantiaDe, OTP_TTL_MS, UNIQUE_MEDIA_SLOTS, cifrar, cpfValido, detectarTipo, gerarOtp, gerarProtocolo, gerarToken, hashDocumento, hashOtp,
   hashTerms, iguaisTempoConstante, mascararTelefone, nomeCurto, onlyDigits, primeiroNome, removerMetadados, sha256Hex, type MediaSlot, type TermsPayload,
 } from "../_shared/core/index.ts";
 import { adminClient, auditar, CORS, env, json, lancarSeErro } from "../_shared/server.ts";
 import { deviceView, mudarEstado, obterTx, ocorrenciaAtiva, partesDaTx, partyView, statusAceite, telefoneDaParte, termosVigentes, txView, type TxRow } from "../_shared/views.ts";
-import { concluir, criarConvite, executarConsulta } from "../_shared/ops.ts";
+import { concluir, criarConvite, executarConsulta, expirarSeParada } from "../_shared/ops.ts";
 import { enviarWhatsapp } from "../_shared/whatsapp.ts";
 
 const SESSAO_DIAS = 30;
@@ -69,6 +69,8 @@ async function intencaoAberta(admin: SupabaseClient, party_id: string, device_id
   for (const r of data ?? []) {
     const t = (r as unknown as { registry_transactions: { id: string; kind: string; state: string } }).registry_transactions;
     if (t.kind !== "pf_pf" || ["completed", "cancelled", "expired", "disputed"].includes(t.state)) continue;
+    // Parada além do prazo: expira aqui mesmo, sem esperar a rotina diária.
+    if (await expirarSeParada(admin, await obterTx(admin, t.id))) continue;
     const parts = await partesDaTx(admin, t.id);
     if (parts.some((p) => p.party_id === party_id && p.role === "seller")) return t.id;
   }
@@ -200,9 +202,10 @@ Deno.serve(async (req) => {
           const st = await statusAceite(admin, it);
           const buyer = (await partesDaTx(admin, it.id)).find((p) => p.role === "buyer")!;
           const terms = await termosVigentes(admin, it);
-          intencao = { transaction_id: it.id, state: it.state, comprador: nomeCurto((await partyView(admin, buyer.party_id)).display_name), comprador_aceitou: st.accepted.some((p) => p.role === "buyer"), vendedor_confirmou: st.accepted.some((p) => p.role === "seller"), declarada: terms?.payload.declaracoes?.origem === "comunicacao_de_venda" };
+          intencao = { transaction_id: it.id, state: it.state, comprador: nomeCurto((await partyView(admin, buyer.party_id)).display_name), comprador_aceitou: st.accepted.some((p) => p.role === "buyer"), vendedor_confirmou: st.accepted.some((p) => p.role === "seller"), declarada: terms?.payload.declaracoes?.origem === "comunicacao_de_venda", expira_em: expiraEm(it.updated_at) };
         }
-        out.push({ device: await deviceView(admin, o.device_id as string), desde: o.started_at, protocolo_entrada: tEnt?.public_protocol ?? null, link_certificado: tEnt?.state === "completed" ? `${base}/certificado/${tEnt.public_protocol}` : null, intencao, ocorrencia_ativa: await ocorrenciaAtiva(admin, o.device_id as string) });
+        const termosEnt = tEnt?.state === "completed" ? await termosVigentes(admin, tEnt) : null;
+        out.push({ device: await deviceView(admin, o.device_id as string), desde: o.started_at, protocolo_entrada: tEnt?.public_protocol ?? null, link_certificado: tEnt?.state === "completed" ? `${base}/certificado/${tEnt.public_protocol}` : null, intencao, garantia: termosEnt ? garantiaDe(tEnt!.completed_at, termosEnt.payload.garantia) : null, ocorrencia_ativa: await ocorrenciaAtiva(admin, o.device_id as string) });
       }
       return json(out);
     }

@@ -37,6 +37,12 @@ Zerar tudo: **📱 Celular do cliente → Zerar demonstração**.
 - **Config**: margens, questionário, formas de pagamento, valores base (importação `Marca;Modelo;Armazenamento;Valor`), integração ERP.
 - **ERP**: compra/venda concluída pode ser enviada ao Sheik Company ERP (`POST /device-purchases` ou `/device-sales`), que é quem emite a NF-e. O banco do Cartório fica separado. Na demonstração o envio é simulado.
 
+### Prazos: expiração e garantia (v0.4)
+
+- **Expiração:** transação aberta e **parada há mais de 7 dias** (sem nenhuma movimentação) vira `expirada`; convites vivos são revogados. Vale para venda entre pessoas, balcão e PDV. `blocked` não expira (só se cancela). Regra em `core/prazos.ts`.
+- **Garantia:** a loja digita ("90 dias", "3 meses", "1 ano"); o Cartório lê o prazo e conta da conclusão do registro. Se o texto não tiver prazo legível ("garantia da loja"), **não há lembrete** — nunca chuta. O card do aparelho em `/pf` mostra o fim e, nos últimos 7 dias, avisa. O comprador também recebe **um** WhatsApp (registrado em `registry_reminders`, nunca repete).
+- **Servidor:** a Edge Function `manutencao` roda por agendamento (diária) e faz as duas coisas; protegida por `CRON_SECRET`. A intenção parada também expira na hora em que a pessoa abre o portal. Na demonstração, expira ao ler.
+
 ### Meus aparelhos — portal da pessoa física (v0.3)
 
 Adaptado da Carteira Digital de Trânsito (ver `benchmark-carteira-digital-transito.md` no Project). Em `/pf`:
@@ -64,6 +70,7 @@ supabase/
   functions/{loja,identidade,aparelho,transacao,consulta_procedencia,midia,convite,aceite,aceite_loja,concluir,certificado,avaliacao,erp,pf}/
   migrations/0003_avaliacao_compra_erp.sql       avaliações, configurações por loja, dados extras cifrados, envios ao ERP
   migrations/0004_portal_pf_declaracoes.sql      sessão PF, declarações do titular (ocorrência), gate na conclusão
+  migrations/0005_expiracao_e_lembretes.sql     lembretes de garantia enviados (e o agendamento da rotina)
   config.toml                            aceite e certificado são públicos (verify_jwt = false)
 src/
   api/types.ts     o contrato — a interface só conhece isto
@@ -87,7 +94,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 **Antes de qualquer coisa: ligue o repositório no GitHub.** A versão anterior deste projeto foi perdida por não estar versionada.
 
 1. Crie o projeto em <https://supabase.com>. Anote **Project URL**, **anon key** e **service_role key**.
-2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002`, `0003` e `0004`, na ordem. (Ou `supabase db push` com o CLI.)
+2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002` a `0005`, na ordem. (Ou `supabase db push` com o CLI.)
 3. **Settings → Edge Functions → Secrets**:
    ```
    REGISTRY_PII_KEY      = <32 bytes em base64>   # cifra CPF/CNPJ
@@ -100,6 +107,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
    ```
    Gerar as chaves: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
    **Trocar o PEPPER invalida todos os hashes já gravados; trocar a KEY torna ilegível todo documento cifrado. Guarde-os fora do Supabase também.**
+   `CRON_SECRET = <texto longo aleatório>` — protege a função `manutencao` (item 4b).
    Sem `WHATSAPP_BRIDGE_URL`, a função registra a mensagem no log do servidor (só para teste) — o operador continua sem ver o código.
 4. Publique as funções:
    ```bash
@@ -108,7 +116,8 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
    supabase link --project-ref <ref>
    supabase functions deploy
    ```
-   Confira que `aceite`, `certificado` e `pf` ficaram com **verify_jwt = false** (está no `config.toml`).
+   Confira que `aceite`, `certificado`, `pf` e `manutencao` ficaram com **verify_jwt = false** (está no `config.toml`).
+4b. Agende a rotina diária (expiração + lembrete de garantia): habilite as extensões `pg_cron` e `pg_net` e rode o `select cron.schedule(...)` que está comentado no fim de `0005_expiracao_e_lembretes.sql`, com a URL do projeto e o `CRON_SECRET`.
 5. Front:
    ```bash
    cp .env.example .env    # VITE_BACKEND=supabase + URL + anon key
@@ -154,7 +163,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 **Pronto (etapas 0–11 da ordem de construção):** auth e loja · identidade cifrada · aparelho e conflito de IMEI · transação, estados e termos versionados · fotos com hash e EXIF removido · consulta simulada com gate · convite + OTP + aceite público · balcão com cronômetro · conclusão atômica com titularidade e evento público · passaporte público · revenda PJ→PF (segundo elo) · certificado com QR e hash · aceite presencial assistido.
 
 **Falta:**
-- Etapa 12 — telas de **PF→PF** (aceite duplo) e **PJ→PJ** (lote). O banco e a máquina de estados já suportam.
+- **PJ→PJ** (lote). O banco e a máquina de estados já suportam.
 - **PDF** do certificado (hoje é HTML imprimível; o hash já é determinístico).
 - Remoção de EXIF em **WebP/HEIC** (hoje: recusa para documento/selfie; aceita para fotos do aparelho).
 - Provedor **real** de consulta de IMEI (o contrato já é o de provedor real — trocar `simularConsulta`).

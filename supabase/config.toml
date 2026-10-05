@@ -10,3 +10,6 @@ verify_jwt = false
 
 [functions.pf]
 verify_jwt = false
+
+[functions.manutencao]
+verify_jwt = false

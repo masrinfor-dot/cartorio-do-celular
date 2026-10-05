@@ -128,6 +128,8 @@ try {
   await loginPf("111.444.777-35", "33999990000");
   await page.getByText("Olá, João").waitFor();
   await page.getByText("iPhone 12").waitFor();
+  await page.getByText(/Garantia \(90 dias\) até/).waitFor();
+  ok("card do aparelho mostra a garantia declarada pela loja (90 dias)");
   await shot("30-meus-aparelhos");
   await page.getByRole("button", { name: "Vender" }).click();
   await page.fill("#vcpf", "529.982.247-25"); await page.fill("#vnome", "Maria da Silva"); await page.fill("#vtel", "31988881234"); await page.fill("#vvalor", "1300");
@@ -197,6 +199,30 @@ try {
   if ((await page.locator(".text-3xl.font-black").innerText()).trim()[0] !== "4") throw new Error("esperava 4 elos após o comprador aceitar a venda comunicada");
   ok("comprador aceitou → transferência concluída sozinha (4º elo)");
   await shot("35-passaporte-4-elos");
+
+  // Expiração: Pedro (titular agora) abre uma venda para João e ninguém mexe nela por 8 dias
+  await page.goto(BASE + "/pf/entrar"); await page.evaluate(() => localStorage.removeItem("cdc-demo-pf-token"));
+  await loginPf("123.456.789-09", "35988880000");
+  await page.getByText("Olá, Pedro").waitFor();
+  await page.getByRole("button", { name: "Vender" }).click();
+  await page.fill("#vcpf", "111.444.777-35"); await page.fill("#vvalor", "800");
+  await page.getByText("fotos sintéticas").click();
+  await page.getByRole("button", { name: "Enviar para o comprador aceitar" }).click();
+  await page.waitForURL("**/pf/venda/**");
+  await page.goto(BASE + "/pf");
+  await page.getByText(/esta venda expira em/).waitFor();
+  ok("intenção de venda mostra até quando vale");
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem("cdc-demo-db-v1"));
+    const antiga = new Date(Date.now() - 8 * 86400000).toISOString();
+    for (const t of db.transactions) if (t.kind === "pf_pf" && !["completed", "cancelled", "expired"].includes(t.state)) t.updated_at = antiga;
+    localStorage.setItem("cdc-demo-db-v1", JSON.stringify(db));
+  });
+  await page.goto(BASE + "/pf");
+  await page.getByRole("button", { name: "Vender" }).waitFor();
+  if (await page.getByText(/Venda em andamento/).count()) throw new Error("a intenção parada deveria ter expirado");
+  ok("intenção parada há 8 dias expirou sozinha e o aparelho voltou a poder ser vendido");
+  await shot("36-intencao-expirada");
 
   if (erros.length) { console.log("Erros de console:", erros); process.exitCode = 1; } else console.log("\nTUDO PASSOU");
 } catch (e) {
