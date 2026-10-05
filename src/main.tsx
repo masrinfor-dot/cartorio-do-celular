@@ -20,6 +20,14 @@ import { Compras } from "@/pages/Compras.tsx";
 import { NotaCompra, NotaVenda } from "@/pages/Notas.tsx";
 import { Configuracoes } from "@/pages/Configuracoes.tsx";
 import { PortalPf, PfProtegida, PfEntrar, PfMeusAparelhos, PfVender, PfVenda, PfComunicar, PfOcorrencia } from "@/pages/PortalPf.tsx";
+import "@fontsource/bricolage-grotesque/500.css";
+import "@fontsource/bricolage-grotesque/700.css";
+import "@fontsource/bricolage-grotesque/800.css";
+import "@fontsource/hanken-grotesk/400.css";
+import "@fontsource/hanken-grotesk/600.css";
+import "@fontsource/hanken-grotesk/700.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 
 function Protegida() {
   const { sessao, carregando } = useSession();

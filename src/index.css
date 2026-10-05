@@ -1,14 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --color-ink: #0f172a;
-  --color-brand: #0f766e;
-  --color-brand-dark: #115e59;
+  --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Identidade v1 — Tinta (marca, ações, verificado). Substitui o teal. */
+  --color-teal-50: #eef0fa; --color-teal-100: #dde1f4; --color-teal-200: #bcc3e9; --color-teal-300: #939fdb;
+  --color-teal-400: #6270c6; --color-teal-500: #4655b3; --color-teal-600: #3a47a6; --color-teal-700: #2f3b9c;
+  --color-teal-800: #252f7d; --color-teal-900: #1c2460; --color-teal-950: #121842;
+  --color-sky-50: #eef0fa; --color-sky-300: #939fdb; --color-sky-700: #2f3b9c; --color-sky-950: #121842;
+  /* Neutros quentes: Papel, Papel escuro, Linha, Grafite. Substitui o slate. */
+  --color-slate-50: #f9f7f1; --color-slate-100: #f4f1e9; --color-slate-200: #eae5d8; --color-slate-300: #d6d0c2;
+  --color-slate-400: #a8a395; --color-slate-500: #6b6b76; --color-slate-600: #4a4a55; --color-slate-700: #3a3a45;
+  --color-slate-800: #24242e; --color-slate-900: #17171f; --color-slate-950: #0e0e14;
+  /* Lacre: acento raro */
+  --color-lacre: #b34e27; --color-lacre-claro: #e8835a;
+  --color-ink: #17171f;
+  --color-brand: #2f3b9c;
+  --color-brand-dark: #252f7d;
 }
 
 html { font-size: 17px; }
-body { @apply bg-slate-100 text-slate-900 antialiased; }
+body { @apply bg-slate-100 text-slate-900 antialiased; font-family: var(--font-sans); }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+.mono, .font-mono { font-family: var(--font-mono); }
 
 /* Campos grandes: isto é usado em pé, atrás de um balcão. */
 .campo {
@@ -29,7 +45,7 @@ body { @apply bg-slate-100 text-slate-900 antialiased; }
 .cartao { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-5; }
 
 .selo { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wide; }
-.selo-verificado { @apply bg-teal-100 text-teal-900 border border-teal-300; }
-.selo-declarado { @apply bg-amber-100 text-amber-900 border border-amber-300; }
+.selo-verificado { @apply bg-teal-700 text-slate-100 border border-teal-700; }
+.selo-declarado { background:#f3e7c9; color:#7a4f08; border:1px dashed #7a4f08; }
 .selo-assistido { @apply bg-orange-100 text-orange-900 border border-orange-300; }
-.selo-forte { @apply bg-teal-100 text-teal-900 border border-teal-300; }
+.selo-forte { @apply bg-teal-700 text-slate-100 border border-teal-700; }
