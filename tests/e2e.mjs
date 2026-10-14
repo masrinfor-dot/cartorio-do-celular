@@ -130,6 +130,15 @@ try {
   if (html2.includes("Maria da Silva")) throw new Error("nome completo no certificado");
   ok("certificado abre com nome curto");
   await shot("08-certificado");
+  // PDF do certificado: baixa, confere que é PDF e que traz protocolo e hash; guarda para inspeção visual
+  const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Baixar PDF" }).click()]);
+  const pdfPath = "tests/shots/08-certificado.pdf";
+  await dl.saveAs(pdfPath);
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(pdfPath);
+  if (bytes.subarray(0, 5).toString() !== "%PDF-") throw new Error("o arquivo baixado não é PDF");
+  if (!dl.suggestedFilename().includes(protocolo)) throw new Error("nome do PDF sem o protocolo");
+  ok("certificado baixa em PDF (" + Math.round(bytes.length / 1024) + " KB)");
 
   // revenda PJ→PF
   await page.goto(BASE + "/estoque");

@@ -6,9 +6,7 @@ import QRCode from "qrcode";
 import { api, type CertificadoView } from "@/api/index.ts";
 import { Aviso, Carregando, Selo, formatarData } from "@/components/ui.tsx";
 
-const ROTULO_DECL: Record<string, string> = { conta_icloud_google: "Conta iCloud / Google", origem: "Origem declarada" };
-const ROTULO_VALOR: Record<string, string> = { desvinculada: "desvinculada", vinculada: "ainda vinculada", nao_verificado: "não verificado", compra_com_nota: "compra com nota fiscal", compra_sem_nota: "compra sem nota fiscal", presente: "presente", outra: "outra" };
-const ROTULO_KIND = { pf_pj: "Entrada: pessoa física → loja", pj_pf: "Revenda: loja → pessoa física", pf_pf: "Pessoa física → pessoa física", pj_pj: "Loja → loja" };
+import { ROTULO_DECL, ROTULO_KIND, ROTULO_VALOR } from "@/lib/certificadoTextos.ts";
 
 export function Certificado() {
   const { protocolo = "" } = useParams();
@@ -20,8 +18,20 @@ export function Certificado() {
   }, [protocolo]);
   useEffect(() => {
     if (!c) return;
-    QRCode.toDataURL(`${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/certificado/${c.protocolo}`, { margin: 1, width: 160 }).then(setQr);
+    QRCode.toDataURL(`${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/certificado/${c.protocolo}`, { margin: 1, width: 320 }).then(setQr);
   }, [c]);
+
+  const urlPublica = c ? `${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/certificado/${c.protocolo}` : "";
+  async function baixarPdf() {
+    if (!c || !qr) return;
+    const { gerarPdfCertificado } = await import("@/lib/certificadoPdf.ts"); // carrega só quando alguém pede o PDF
+    const bytes = await gerarPdfCertificado(c, urlPublica, qr);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
+    a.download = `certificado-${c.protocolo}.pdf`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
 
   if (c === undefined) return <Carregando />;
   if (c === null) return <div className="mx-auto max-w-xl"><Aviso tom="neutro" titulo="Não encontramos esse protocolo.">Confira os 10 caracteres. Protocolos não são sequenciais.</Aviso></div>;
@@ -69,7 +79,10 @@ export function Certificado() {
           <p>O Cartório registra passagens declaradas e verificadas na data indicada. Não é órgão público e não substitui boletim de ocorrência, nota fiscal ou vistoria técnica.</p>
         </footer>
       </div>
-      <div className="mt-3 text-center print:hidden"><button className="text-sm underline text-teal-800" onClick={() => window.print()}>Imprimir / salvar em PDF</button></div>
+      <div className="mt-3 flex justify-center gap-4 print:hidden">
+        <button className="btn btn-primario" onClick={baixarPdf}>Baixar PDF</button>
+        <button className="text-sm underline text-teal-800" onClick={() => window.print()}>Imprimir</button>
+      </div>
     </div>
   );
 }
