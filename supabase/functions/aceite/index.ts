@@ -8,9 +8,9 @@ import {
   DomainError, OTP_MAX_ATTEMPTS, OTP_TTL_MS, formatarCentavos, gerarOtp, hashOtp, iguaisTempoConstante, nomeCurto, onlyDigits, primeiroNome, sha256Hex,
 } from "../_shared/core/index.ts";
 import { adminClient, CORS, env, json, lancarSeErro } from "../_shared/server.ts";
-import { deviceIdDaTx, deviceView, mudarEstado, obterTx, partesDaTx, partyView, statusAceite, telefoneDaParte, termosVigentes } from "../_shared/views.ts";
+import { deviceIdDaTx, deviceView, obterTx, partesDaTx, partyView, statusAceite, telefoneDaParte, termosVigentes } from "../_shared/views.ts";
 import { enviarWhatsapp } from "../_shared/whatsapp.ts";
-import { concluir } from "../_shared/ops.ts";
+import { avancarAposAceite, concluir } from "../_shared/ops.ts";
 
 const INVALIDO = "Este link não é válido ou já foi usado. Peça um novo para a loja.";
 const MUDOU = "As condições mudaram depois que este link foi enviado. Peça um novo para a loja.";
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       });
       if (eAcc && !/registry_acceptances_unique/.test(eAcc.message ?? "")) lancarSeErro(eAcc);
       await admin.from("registry_acceptance_invites").update({ consumed_at: new Date().toISOString() }).eq("id", inv.id);
-      await avancar(admin, t);
+      await avancarAposAceite(admin, t);
       // Entre pessoas (sem loja): quando as duas aceitaram, a transferência conclui sozinha.
       if (t.kind === "pf_pf" && !t.store_id && (await statusAceite(admin, t)).complete) {
         try { await concluir(admin, null, t); } catch (e) { console.log("pf_pf: conclusão automática adiada:", e instanceof Error ? e.message : e); }
@@ -117,15 +117,3 @@ Deno.serve(async (req) => {
     return json({ error: { code: "erro", message: "Algo deu errado. Tente de novo." } }, 500);
   }
 });
-
-async function avancar(admin: ReturnType<typeof adminClient>, t: Awaited<ReturnType<typeof obterTx>>) {
-  const st = await statusAceite(admin, t);
-  const sellerOk = st.accepted.some((p) => p.role === "seller");
-  const buyerOk = st.accepted.some((p) => p.role === "buyer");
-  if (st.complete && t.state !== "ready_to_complete") {
-    if (t.state === "awaiting_seller") await mudarEstado(admin, t, "awaiting_buyer");
-    if (t.state === "awaiting_buyer") await mudarEstado(admin, t, "ready_to_complete");
-  } else if (sellerOk && !buyerOk && t.state === "awaiting_seller") {
-    await mudarEstado(admin, t, "awaiting_buyer");
-  }
-}

@@ -7,3 +7,4 @@ export * from "./acceptance.ts";
 export * from "./imagem.ts";
 export * from "./avaliacao.ts";
 export * from "./prazos.ts";
+export * from "./lote.ts";

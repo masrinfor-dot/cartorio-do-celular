@@ -142,6 +142,62 @@ export interface ResumoAceitePublico {
   aceito?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Venda em lote entre lojas (PJ→PJ)
+// ---------------------------------------------------------------------------
+
+export interface LoteItemView {
+  transaction_id: string;
+  protocolo: string;
+  device: DeviceView;
+  valor_centavos: number;
+  state: TransactionState;
+  loja_aceitou: boolean;
+  comprador_aceitou: boolean;
+  /** Resultado da consulta de procedência deste item (null = ainda não consultado). */
+  consulta: CheckOutcome["result"] | null;
+  /** Entrou no convite enviado? Itens bloqueados ou em revisão ficam de fora. */
+  no_convite: boolean;
+}
+
+export interface LoteView {
+  id: string;
+  criado_em: string;
+  comprador: { party_id: string; display_name: string; kind: PartyKind; telefone_mascarado: string | null };
+  itens: LoteItemView[];
+  total_centavos: number;
+  convite: { destino_mascarado: string; expires_at: string; enviado_em: string; aceito: boolean; valido: boolean } | null;
+  pode_enviar: boolean;
+  pode_concluir: boolean;
+  concluidos: number;
+}
+
+export interface LoteResumo { id: string; criado_em: string; comprador: string; itens: number; concluidos: number; total_centavos: number }
+
+export interface CriarLoteDados {
+  comprador: { documento: string; nome: string; telefone: string };
+  itens: Array<{ device_id: string; valor_centavos: number }>;
+  forma_pagamento: string;
+  garantia?: string;
+  estado_aparelho?: string;
+  idempotency_key: string;
+}
+
+export interface ResumoAceiteLote {
+  valido: boolean;
+  motivo?: string;
+  aceito?: boolean;
+  primeiro_nome?: string;
+  loja?: string;
+  itens?: Array<{ aparelho: string; imei_mascarado: string; valor: string }>;
+  total?: string;
+  forma_pagamento?: string;
+  garantia?: string;
+  estado_aparelho?: string;
+  impressao?: string;
+  tentativas_restantes?: number;
+}
+
 export interface ConclusaoResultado {
   protocolo: string;
   grade: AcceptanceGrade;
@@ -385,6 +441,22 @@ export interface RegistryApi {
 
   aceiteLoja: {
     registrar(transaction_id: string, party_id: string): Promise<AcceptanceStatus>;
+  };
+
+  /** Venda em lote para outra loja: uma transação por aparelho, um aceite para o conjunto. */
+  lote: {
+    criar(dados: CriarLoteDados): Promise<LoteView>;
+    listar(): Promise<LoteResumo[]>;
+    obter(id: string): Promise<LoteView>;
+    /** Aceita pela loja e envia UM link à loja compradora. O link volta uma vez só. */
+    enviar(id: string): Promise<{ link: string; destino_mascarado: string; itens_no_convite: number; lote: LoteView }>;
+    concluir(id: string): Promise<{ resultados: Array<{ transaction_id: string; protocolo: string; ok: boolean; erro?: string }>; lote: LoteView }>;
+  };
+  /** Rotas SEM sessão do lote — a loja compradora, no celular do responsável. */
+  aceiteLotePublico: {
+    resumo(token: string): Promise<ResumoAceiteLote>;
+    pedirCodigo(token: string): Promise<{ enviado: boolean; destino_mascarado: string }>;
+    confirmar(token: string, codigo: string): Promise<{ aceito: boolean }>;
   };
 
   aceiteAssistido: {

@@ -9,7 +9,7 @@ export function Estoque() {
   if (!lista) return <Carregando />;
   return (
     <div>
-      <h1 className="text-2xl font-black tracking-tight mb-1">PDV — aparelhos de que a loja é titular</h1>
+      <div className="flex flex-wrap items-start gap-3"><h1 className="flex-1 text-2xl font-black tracking-tight mb-1">PDV — aparelhos de que a loja é titular</h1><Link to="/lote/novo"><Botao variante="secundario">Enviar lote a outra loja</Botao></Link></div>
       <p className="text-slate-600 mb-4">A venda parte daqui: dados do comprador, valor, pagamento, garantia, aceite pelo celular dele e nota de venda. É o segundo elo que transforma uma lista de compras em uma corrente.</p>
       {lista.length === 0 && <p className="text-slate-600">Nenhum aparelho ainda. Conclua uma compra em Comprar.</p>}
       <ul className="space-y-2">

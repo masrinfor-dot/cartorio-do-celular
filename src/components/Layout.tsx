@@ -17,6 +17,7 @@ export function Layout() {
             <nav className="hidden sm:flex items-center gap-1 ml-2">
               <NavLink to="/avaliacao" className={link}>Comprar</NavLink>
               <NavLink to="/estoque" className={link}>Vender (PDV)</NavLink>
+              <NavLink to="/lotes" className={link}>Lote</NavLink>
               <NavLink to="/compras" className={link}>Compras</NavLink>
               <NavLink to="/registros" className={link}>Registros</NavLink>
               <NavLink to="/passaporte" className={link}>Consultar</NavLink>
@@ -36,6 +37,7 @@ export function Layout() {
           <nav className="sm:hidden flex gap-1 overflow-x-auto px-3 pb-2">
             <NavLink to="/avaliacao" className={link}>Comprar</NavLink>
             <NavLink to="/estoque" className={link}>Vender</NavLink>
+            <NavLink to="/lotes" className={link}>Lote</NavLink>
             <NavLink to="/compras" className={link}>Compras</NavLink>
             <NavLink to="/registros" className={link}>Registros</NavLink>
             <NavLink to="/passaporte" className={link}>Consultar</NavLink>

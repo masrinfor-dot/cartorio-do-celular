@@ -51,6 +51,7 @@ import {
   type TransactionParty,
   type TransactionState,
   deveExpirar,
+  fotosDispensadas,
 } from "@core/index.ts";
 import type {
   BuscaAparelho,
@@ -120,6 +121,13 @@ interface DB {
   device_flags: Array<Row & { device_id: string; kind: "theft_declared"; tipo: "furto" | "roubo" | "perda"; declared_by_party_id: string; bo_numero: string | null; bo_data: string | null; cidade: string | null; uf: string | null; active: boolean; withdrawn_at: string | null; withdrawn_reason: string | null }>;
   pf_otps: Array<Row & { cpf_hash: string; phone: string; nome: string | null; otp_hash: string; expires_at: string; attempts: number }>;
   pf_sessions: Array<Row & { token_hash: string; party_id: string; expires_at: string }>;
+  batches: Array<Row & { store_id: string; buyer_party_id: string; created_by: string }>;
+  batch_items: Array<Row & { batch_id: string; transaction_id: string }>;
+  batch_invites: Array<Row & {
+    batch_id: string; party_id: string; token_hash: string; fingerprint: string; transaction_ids: string[]; destination_phone: string; destination_masked: string;
+    otp_hash: string | null; otp_expires_at: string | null; otp_attempts: number; otp_sent_count: number; expires_at: string;
+    consumed_at: string | null; revoked_at: string | null; revoked_reason: string | null;
+  }>;
 }
 
 function vazio(): DB {
@@ -130,6 +138,7 @@ function vazio(): DB {
     ownership_periods: [], certificates: [], idempotency_keys: [], outbox: [], audit: [], whatsapp_inbox: [],
     avaliacoes: [], party_details: [], store_settings: [], erp_envios: [],
     device_flags: [], pf_otps: [], pf_sessions: [],
+    batches: [], batch_items: [], batch_invites: [],
   };
 }
 
@@ -327,7 +336,7 @@ export const demoAdmin = {
 // A API
 // ---------------------------------------------------------------------------
 
-export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda" | "pf"> = {
+export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda" | "pf" | "lote" | "aceiteLotePublico"> = {
   modo: "demo",
 
   auth: {
@@ -461,7 +470,7 @@ export const demoApi: Omit<RegistryApi, "avaliacao" | "erp" | "notaVenda" | "pf"
       const r = await idempotente("tx.create", idempotency_key, s.store.id, body, async () => {
         if (!db.devices.some((d) => d.id === device_id)) throw new DomainError("aparelho", "Aparelho não encontrado.", 404);
         const storeParty = db.stores.find((x) => x.id === s.store.id)!.party_id;
-        if (kind === "pj_pf") {
+        if (kind === "pj_pf" || kind === "pj_pj") {
           // Não se vende o que não se tem.
           const titular = db.ownership_periods.find((o) => o.device_id === device_id && !o.ended_at);
           if (!titular || titular.party_id !== storeParty) throw new DomainError("nao_titular", "A loja não é a titular atual deste aparelho. Não se vende o que não se tem.", 403);
@@ -820,7 +829,7 @@ async function concluirInterno(t: DB["transactions"][number], actor: { store_id:
   // 2. fotos obrigatórias (a comunicação de venda entre pessoas é a exceção: o
   //    aparelho já não está com o vendedor; a prova é o aceite das duas partes)
   const termsAtual = termosVigentes(transaction_id);
-  const comunicacao = t.kind === "pf_pf" && termsAtual?.payload.declaracoes?.origem === "comunicacao_de_venda";
+  const comunicacao = fotosDispensadas(t.kind, String(termsAtual?.payload.declaracoes?.origem ?? ""));
   const slots = new Set(db.device_media.filter((m) => m.transaction_id === transaction_id).map((m) => m.slot));
   const faltam = comunicacao ? [] : REQUIRED_MEDIA_SLOTS.filter((sl) => !slots.has(sl));
   if (faltam.length) throw new DomainError("fotos", `Faltam fotos obrigatórias: ${faltam.map(rotuloSlot).join(", ")}.`, 409);
@@ -927,6 +936,7 @@ async function reduzirParaDataUrl(arquivo: Blob): Promise<string> {
 // ---------------------------------------------------------------------------
 export const demoInternals = {
   db: () => db,
+  exigirTxDaLoja,
   /** Sessão com loja obrigatória, no formato { user: {id}, store }. */
   sessao: () => { const s = exigirSessao(); return { user: { id: s.user_id, email: s.email }, store: s.store }; },
   salvar,

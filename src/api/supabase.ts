@@ -106,6 +106,18 @@ export const supabaseApi: RegistryApi = {
     confirmar: (token, codigo) => fn("aceite", { op: "confirmar", token, codigo }, { publico: true }),
   },
   aceiteLoja: { registrar: (transaction_id, party_id) => fn("aceite_loja", { transaction_id, party_id, channel: "operator_pj" }) },
+  lote: {
+    criar: ({ idempotency_key, ...dados }) => fn("lote", { op: "criar", ...dados }, { headers: { "Idempotency-Key": idempotency_key } }),
+    listar: () => fn("lote", { op: "listar" }),
+    obter: (id) => fn("lote", { op: "obter", id }),
+    enviar: (id) => fn("lote", { op: "enviar", id }),
+    concluir: (id) => fn("lote", { op: "concluir", id }),
+  },
+  aceiteLotePublico: {
+    resumo: (token) => fn("aceite_lote", { op: "resumo", token }, { publico: true }),
+    pedirCodigo: (token) => fn("aceite_lote", { op: "codigo", token }, { publico: true }),
+    confirmar: (token, codigo) => fn("aceite_lote", { op: "confirmar", token, codigo }, { publico: true }),
+  },
   aceiteAssistido: { registrar: (transaction_id, party_id, motivo) => fn("aceite_loja", { transaction_id, party_id, channel: "presencial_assistido", motivo }) },
   concluir: (transaction_id, idempotency_key) => fn("concluir", { transaction_id }, { headers: { "Idempotency-Key": idempotency_key } }),
   estoque: {

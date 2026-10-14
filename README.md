@@ -50,6 +50,14 @@ Zerar tudo: **📱 Celular do cliente → Zerar demonstração**.
 - **Quem viu documento/selfie:** cada abertura vai para `registry_access_log` (quem, quando, qual foto; nunca o conteúdo), que só aceita novas linhas. Listas de transações não assinam documento/selfie.
 - **Expurgo:** a `manutencao` apaga o **arquivo** de documento/selfie de registro concluído há mais de 5 anos. Fica o SHA-256 e a marca `purged_at`. Migration `0006`.
 
+### Venda em lote entre lojas — PJ→PJ (v0.6)
+
+- Em **Lote**: a loja titular escolhe vários aparelhos do estoque, informa a loja compradora (CNPJ, nome, WhatsApp do responsável), valor de cada um, pagamento e garantia. Máximo de 50 por lote.
+- **Uma transação por aparelho** (protocolo, certificado, nota e elo próprios). Um link e **um código** para a loja compradora aceitar o conjunto. O aceite fica preso à impressão digital do lote: se qualquer item mudar, o link deixa de valer.
+- Cada item passa pela consulta de procedência; **só os liberados entram no convite**. Os demais ficam fora, com o motivo à vista.
+- Fotos obrigatórias dispensadas (origem `lote_pj`): o vendedor é o titular registrado, o aparelho já entrou com a documentação dele. Só vale se o titular aberto for a própria loja.
+- Concluir: cada item conclui sozinho; se um falhar, os outros seguem e a falha é mostrada. Migration `0007`; funções `lote` e `aceite_lote` (esta pública).
+
 ### Meus aparelhos — portal da pessoa física (v0.3)
 
 Adaptado da Carteira Digital de Trânsito (ver `benchmark-carteira-digital-transito.md` no Project). Em `/pf`:
@@ -79,6 +87,7 @@ supabase/
   migrations/0004_portal_pf_declaracoes.sql      sessão PF, declarações do titular (ocorrência), gate na conclusão
   migrations/0005_expiracao_e_lembretes.sql     lembretes de garantia enviados (e o agendamento da rotina)
   migrations/0006_lgpd_acesso_e_expurgo.sql     log de acesso a documento/selfie (imutável) e marca de expurgo
+  migrations/0007_lote_pj_pj.sql                lotes PJ→PJ, convite único e conclusão com dispensa de fotos
   config.toml                            aceite e certificado são públicos (verify_jwt = false)
 src/
   api/types.ts     o contrato — a interface só conhece isto
@@ -102,7 +111,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 **Antes de qualquer coisa: ligue o repositório no GitHub.** A versão anterior deste projeto foi perdida por não estar versionada.
 
 1. Crie o projeto em <https://supabase.com>. Anote **Project URL**, **anon key** e **service_role key**.
-2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002` a `0006`, na ordem. (Ou `supabase db push` com o CLI.)
+2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002` a `0007`, na ordem. (Ou `supabase db push` com o CLI.)
 3. **Settings → Edge Functions → Secrets**:
    ```
    REGISTRY_PII_KEY      = <32 bytes em base64>   # cifra CPF/CNPJ
@@ -171,7 +180,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 **Pronto (etapas 0–11 da ordem de construção):** auth e loja · identidade cifrada · aparelho e conflito de IMEI · transação, estados e termos versionados · fotos com hash e EXIF removido · consulta simulada com gate · convite + OTP + aceite público · balcão com cronômetro · conclusão atômica com titularidade e evento público · passaporte público · revenda PJ→PF (segundo elo) · certificado com QR e hash · aceite presencial assistido.
 
 **Falta:**
-- **PJ→PJ** (lote). O banco e a máquina de estados já suportam.
+- **Supabase real** (o Samuel cria a conta/projeto), **gov.br** (SERPRO), **portador autorizado + QR assinado offline**.
 - Provedor **real** de consulta de IMEI (o contrato já é o de provedor real — trocar `simularConsulta`).
 - **Prazo de retenção** de documento/selfie (5 anos, padrão provisório) — falta o parecer jurídico confirmar.
 - Integração com o ERP Sheik CRM 360 (entrada de estoque e rascunho a partir da avaliação de usados).

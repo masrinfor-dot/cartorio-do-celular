@@ -88,7 +88,7 @@ export async function criarTransacao(admin: SupabaseClient, ctx: OpCtx, d: { kin
     if (idem.request_hash !== request_hash) throw new DomainError("idempotencia_conflito", "Esta chave já foi usada com dados diferentes.", 409);
     return obterTx(admin, (idem.response as { id: string }).id, ctx.store.id);
   }
-  if (d.kind === "pj_pf") {
+  if (d.kind === "pj_pf" || d.kind === "pj_pj") {
     const { data: titular } = await admin.from("registry_ownership_periods").select("party_id").eq("device_id", d.device_id).is("ended_at", null).maybeSingle();
     if (!titular || titular.party_id !== ctx.store.party_id) throw new DomainError("nao_titular", "A loja não é a titular atual deste aparelho. Não se vende o que não se tem.", 403);
   }
@@ -272,4 +272,17 @@ export async function purgarEvidencias(admin: SupabaseClient, agora = new Date()
     }
   }
   return n;
+}
+
+/** Depois de um aceite: avança o estado conforme quem já aceitou. Usado por todos os caminhos de aceite. */
+export async function avancarAposAceite(admin: SupabaseClient, t: TxRow) {
+  const st = await statusAceite(admin, t);
+  const sellerOk = st.accepted.some((p) => p.role === "seller");
+  const buyerOk = st.accepted.some((p) => p.role === "buyer");
+  if (st.complete && t.state !== "ready_to_complete") {
+    if (t.state === "awaiting_seller") await mudarEstado(admin, t, "awaiting_buyer");
+    if (t.state === "awaiting_buyer") await mudarEstado(admin, t, "ready_to_complete");
+  } else if (sellerOk && !buyerOk && t.state === "awaiting_seller") {
+    await mudarEstado(admin, t, "awaiting_buyer");
+  }
 }

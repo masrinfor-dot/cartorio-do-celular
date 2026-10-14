@@ -3,7 +3,8 @@
 //   channel 'presencial_assistido' → exceção com cinco travas (regra 9 do dossiê)
 import { DomainError, exigirAceiteAssistidoPermitido } from "../_shared/core/index.ts";
 import { auditar, exigirLoja, lancarSeErro, servir } from "../_shared/server.ts";
-import { mudarEstado, obterTx, partesDaTx, statusAceite, termosVigentes } from "../_shared/views.ts";
+import { obterTx, partesDaTx, statusAceite, termosVigentes } from "../_shared/views.ts";
+import { avancarAposAceite } from "../_shared/ops.ts";
 
 servir(async (_req, ctx, body) => {
   const { user, store } = exigirLoja(ctx);
@@ -43,14 +44,7 @@ servir(async (_req, ctx, body) => {
     await auditar(admin, store.id, user.id, "acceptance.assisted", "transaction", t.id, { reason: evidence.reason, invite_id: inviteParaQueimar }, ctx.ip);
   }
 
-  const st = await statusAceite(admin, t);
-  const sellerOk = st.accepted.some((p) => p.role === "seller");
-  const buyerOk = st.accepted.some((p) => p.role === "buyer");
-  if (st.complete && t.state !== "ready_to_complete") {
-    if (t.state === "awaiting_seller") await mudarEstado(admin, t, "awaiting_buyer");
-    if (t.state === "awaiting_buyer") await mudarEstado(admin, t, "ready_to_complete");
-  } else if (sellerOk && !buyerOk && t.state === "awaiting_seller") {
-    await mudarEstado(admin, t, "awaiting_buyer");
-  }
-  return st;
+  await avancarAposAceite(admin, t);
+  return await statusAceite(admin, t);
+
 });

@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.manutencao]
 verify_jwt = false
+
+[functions.aceite_lote]
+verify_jwt = false

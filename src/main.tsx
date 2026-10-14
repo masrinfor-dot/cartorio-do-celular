@@ -12,6 +12,8 @@ import { Registros } from "@/pages/Registros.tsx";
 import { Estoque } from "@/pages/Estoque.tsx";
 import { FluxoTransacao } from "@/pages/FluxoTransacao.tsx";
 import { Aceite } from "@/pages/Aceite.tsx";
+import { AceiteLote } from "@/pages/AceiteLote.tsx";
+import { ListaLotes, LotePagina, NovoLote } from "@/pages/Lote.tsx";
 import { Passaporte } from "@/pages/Passaporte.tsx";
 import { Certificado } from "@/pages/Certificado.tsx";
 import { DemoCelular } from "@/pages/DemoCelular.tsx";
@@ -50,6 +52,7 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           {/* Pública, sem layout e sem sessão: o cliente abre no celular dele */}
           <Route path="/aceite/:token" element={<Aceite />} />
+          <Route path="/aceite-lote/:token" element={<AceiteLote />} />
           {/* Portal da pessoa física — sessão própria, sem loja */}
           <Route path="/pf" element={<PortalPf />}>
             <Route path="entrar" element={<PfEntrar />} />
@@ -83,6 +86,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/revenda/:deviceId" element={<FluxoTransacao kind="pj_pf" />} />
               <Route path="/registros" element={<Registros />} />
               <Route path="/estoque" element={<Estoque />} />
+              <Route path="/lotes" element={<ListaLotes />} />
+              <Route path="/lote/novo" element={<NovoLote />} />
+              <Route path="/lote/:id" element={<LotePagina />} />
               {MODO_DEMO && <Route path="/demo/celular" element={<DemoCelular />} />}
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
