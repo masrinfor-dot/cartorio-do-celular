@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
       return json(out);
     }
 
-    if (op === "transacao") return json(await txView(admin, await txDaPf(admin, String(body.transaction_id ?? ""), s.party_id)));
+    if (op === "transacao") return json(await txView(admin, await txDaPf(admin, String(body.transaction_id ?? ""), s.party_id), { ator: { party_id: s.party_id } }));
 
     if (op === "iniciar_venda") {
       const device_id = String(body.device_id ?? "");

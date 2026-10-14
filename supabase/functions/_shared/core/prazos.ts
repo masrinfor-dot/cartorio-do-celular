@@ -56,3 +56,19 @@ export function garantiaDe(concluidoEm: string | null, texto: string, agora: Dat
   const situacao: SituacaoGarantia = restantes < 0 ? "vencida" : restantes <= LEMBRETE_GARANTIA_DIAS ? "vence_em_breve" : "vigente";
   return { ate: ate.toISOString(), dias_restantes: restantes, situacao, texto };
 }
+
+/**
+ * Por quanto tempo documento e selfie ficam guardados depois da conclusão.
+ * 5 anos acompanha o prazo de reparação do CDC (art. 27). PENDENTE de parecer jurídico.
+ */
+export const RETENCAO_EVIDENCIA_DIAS = 5 * 365;
+
+/** Documento/selfie de um registro concluído há mais que o prazo de retenção? */
+export function evidenciaVencida(concluidoEm: string | null, agora: Date = new Date(), dias: number = RETENCAO_EVIDENCIA_DIAS): boolean {
+  if (!concluidoEm) return false;
+  const t = Date.parse(concluidoEm);
+  return !Number.isNaN(t) && agora.getTime() - t > dias * DIA_MS;
+}
+
+/** Fotos que carregam dado pessoal: vão para o log de acesso e para o expurgo. */
+export const SLOTS_PESSOAIS = ["documento", "selfie"] as const;

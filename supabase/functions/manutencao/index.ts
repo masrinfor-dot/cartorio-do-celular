@@ -3,7 +3,7 @@
 // Protegida por segredo próprio no cabeçalho X-Cron-Secret.
 import { DomainError, iguaisTempoConstante } from "../_shared/core/index.ts";
 import { CORS, adminClient, env, json } from "../_shared/server.ts";
-import { expirarPendentes, lembrarGarantias } from "../_shared/ops.ts";
+import { expirarPendentes, lembrarGarantias, purgarEvidencias } from "../_shared/ops.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
     const admin = adminClient();
     const expiradas = await expirarPendentes(admin);
     const garantias = await lembrarGarantias(admin);
-    return json({ expiradas, garantias });
+    const evidenciasApagadas = await purgarEvidencias(admin);
+    return json({ expiradas, garantias, evidenciasApagadas });
   } catch (e) {
     if (e instanceof DomainError) return json({ error: { code: e.code, message: e.message } }, e.status);
     console.error("manutencao falhou", e instanceof Error ? e.message : e);

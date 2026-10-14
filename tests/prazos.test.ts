@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deveExpirar, garantiaDe, prazoGarantiaDias, PRAZO_PARADA_DIAS } from "@core/index.ts";
+import { RETENCAO_EVIDENCIA_DIAS, evidenciaVencida, deveExpirar, garantiaDe, prazoGarantiaDias, PRAZO_PARADA_DIAS } from "@core/index.ts";
 
 const agora = new Date("2026-10-10T12:00:00Z");
 const dias = (n: number) => new Date(agora.getTime() - n * 86_400_000).toISOString();
@@ -26,4 +26,12 @@ describe("prazo de garantia", () => {
     expect(garantiaDe(null, "90 dias", agora)).toBeNull();
     expect(garantiaDe(dias(1), "Sem garantia", agora)).toBeNull();
   });
+});
+
+describe("retenção de documento e selfie (LGPD)", () => {
+  it("só vence depois do prazo, contado da conclusão", () => {
+    expect(evidenciaVencida(dias(RETENCAO_EVIDENCIA_DIAS - 1), agora)).toBe(false);
+    expect(evidenciaVencida(dias(RETENCAO_EVIDENCIA_DIAS + 1), agora)).toBe(true);
+  });
+  it("registro não concluído nunca vence", () => expect(evidenciaVencida(null, agora)).toBe(false));
 });

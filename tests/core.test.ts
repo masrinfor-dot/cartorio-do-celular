@@ -195,4 +195,69 @@ describe("Imagem: tipo real e remoção de metadados", () => {
     expect(new TextDecoder().decode(r.bytes)).not.toContain("tEXt");
     expect(new TextDecoder().decode(r.bytes)).toContain("IHDR");
   });
+
+  it("remove EXIF/XMP/ICC de um WebP, atualiza o VP8X e o tamanho do RIFF", () => {
+    const le = (n: number) => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+    const asc = (s: string) => s.split("").map((c) => c.charCodeAt(0));
+    const chunk = (id: string, d: number[]) => [...asc(id), ...le(d.length), ...d, ...(d.length & 1 ? [0] : [])];
+    const vp8x = chunk("VP8X", [0x2c, 0, 0, 0, 9, 0, 0, 9, 0, 0]); // flags: ICC|EXIF|XMP ligados
+    const gps = asc("GPS-SECRETO!"); // 12 bytes
+    const corpo = [...asc("WEBP"), ...vp8x, ...chunk("ICCP", [1, 2, 3, 4]), ...chunk("VP8 ", [7, 7, 7, 7, 7, 7]), ...chunk("EXIF", gps), ...chunk("XMP ", asc("<x/>"))];
+    const webp = new Uint8Array([...asc("RIFF"), ...le(corpo.length), ...corpo]);
+    expect(detectarTipo(webp)).toBe("image/webp");
+    const r = removerMetadados(webp, "image/webp");
+    expect(r.removeu).toBe(true);
+    expect(r.suportado).toBe(true);
+    const txt = new TextDecoder().decode(r.bytes);
+    expect(txt).not.toContain("GPS-SECRETO");
+    expect(txt).not.toContain("EXIF");
+    expect(txt).not.toContain("ICCP");
+    expect(txt).toContain("VP8 ");
+    expect(r.bytes[20] & (0x20 | 0x08 | 0x04)).toBe(0); // flags do VP8X limpas
+    const riff = r.bytes[4] | (r.bytes[5] << 8) | (r.bytes[6] << 16);
+    expect(riff).toBe(r.bytes.length - 8);
+  });
+  it("WebP sem metadados volta igual", () => {
+    const le = (n: number) => [n & 255, (n >> 8) & 255, 0, 0];
+    const asc = (s: string) => s.split("").map((c) => c.charCodeAt(0));
+    const corpo = [...asc("WEBP"), ...asc("VP8 "), ...le(4), 1, 2, 3, 4];
+    const webp = new Uint8Array([...asc("RIFF"), ...le(corpo.length), ...corpo]);
+    const r = removerMetadados(webp, "image/webp");
+    expect(r.removeu).toBe(false);
+    expect(Array.from(r.bytes)).toEqual(Array.from(webp));
+  });
+  it("HEIC: zera o item Exif no lugar, sem mexer em tamanho nem em offsets", () => {
+    const u32 = (n: number) => [(n >>> 24) & 255, (n >> 16) & 255, (n >> 8) & 255, n & 255];
+    const u16 = (n: number) => [(n >> 8) & 255, n & 255];
+    const asc = (s: string) => s.split("").map((c) => c.charCodeAt(0));
+    const box = (tipo: string, ...corpo: number[][]) => { const c = corpo.flat(); return [...u32(8 + c.length), ...asc(tipo), ...c]; };
+    const ftyp = box("ftyp", asc("heic"), u32(0), asc("mif1"));
+    const infe = (id: number, tipo: string) => box("infe", [2, 0, 0, 0], u16(id), u16(0), asc(tipo), [0]);
+    const iinf = box("iinf", [0, 0, 0, 0], u16(2), infe(1, "hvc1"), infe(2, "Exif"));
+    const foto = asc("PIXELS-DA-FOTO"); // 14 bytes
+    const exif = asc("..GPS-23.5S-46.6W.."); // 20 bytes
+    // iloc v0: offset_size=4,length_size=4 | base_size=0 ; 2 itens, 1 extent cada
+    const montarIloc = (offFoto: number, offExif: number) => box("iloc", [0, 0, 0, 0], [0x44, 0x00], u16(2),
+      u16(1), u16(0), u16(1), u32(offFoto), u32(foto.length),
+      u16(2), u16(0), u16(1), u32(offExif), u32(exif.length));
+    const meta = (offFoto: number, offExif: number) => box("meta", [0, 0, 0, 0], iinf, montarIloc(offFoto, offExif));
+    const tamMeta = meta(0, 0).length;
+    const ini = ftyp.length + tamMeta + 8; // início dos dados do mdat
+    const heic = new Uint8Array([...ftyp, ...meta(ini, ini + foto.length), ...box("mdat", foto, exif)]);
+    expect(detectarTipo(heic)).toBe("image/heic");
+    const r = removerMetadados(heic, "image/heic");
+    expect(r.removeu).toBe(true);
+    expect(r.suportado).toBe(true);
+    expect(r.bytes.length).toBe(heic.length);
+    const txt = new TextDecoder().decode(r.bytes);
+    expect(txt).not.toContain("GPS-23");
+    expect(txt).toContain("PIXELS-DA-FOTO");
+    // a entrada original não foi alterada
+    expect(new TextDecoder().decode(heic)).toContain("GPS-23");
+  });
+  it("arquivo malformado não quebra: volta como não suportado", () => {
+    const lixo = new Uint8Array([0, 0, 0, 20, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63, 9, 9, 9, 9]);
+    expect(() => removerMetadados(lixo, "image/heic")).not.toThrow();
+    expect(removerMetadados(lixo, "image/heic").removeu).toBe(false);
+  });
 });

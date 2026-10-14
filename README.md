@@ -43,6 +43,13 @@ Zerar tudo: **📱 Celular do cliente → Zerar demonstração**.
 - **Garantia:** a loja digita ("90 dias", "3 meses", "1 ano"); o Cartório lê o prazo e conta da conclusão do registro. Se o texto não tiver prazo legível ("garantia da loja"), **não há lembrete** — nunca chuta. O card do aparelho em `/pf` mostra o fim e, nos últimos 7 dias, avisa. O comprador também recebe **um** WhatsApp (registrado em `registry_reminders`, nunca repete).
 - **Servidor:** a Edge Function `manutencao` roda por agendamento (diária) e faz as duas coisas; protegida por `CRON_SECRET`. A intenção parada também expira na hora em que a pessoa abre o portal. Na demonstração, expira ao ler.
 
+### Certificado em PDF, fotos e LGPD (v0.5)
+
+- **PDF do certificado** (A4): botão "Baixar PDF" na página pública. Gerado no navegador com o mesmo dado da tela, com QR e hash; sem nome completo nem CPF.
+- **Fotos:** a localização (EXIF/XMP/ICC) é removida de JPEG, PNG, **WebP** e **HEIC**. No HEIC os dados ficam zerados no lugar, sem mudar tamanho nem posição. Arquivo ilegível é recusado para documento/selfie.
+- **Quem viu documento/selfie:** cada abertura vai para `registry_access_log` (quem, quando, qual foto; nunca o conteúdo), que só aceita novas linhas. Listas de transações não assinam documento/selfie.
+- **Expurgo:** a `manutencao` apaga o **arquivo** de documento/selfie de registro concluído há mais de 5 anos. Fica o SHA-256 e a marca `purged_at`. Migration `0006`.
+
 ### Meus aparelhos — portal da pessoa física (v0.3)
 
 Adaptado da Carteira Digital de Trânsito (ver `benchmark-carteira-digital-transito.md` no Project). Em `/pf`:
@@ -71,6 +78,7 @@ supabase/
   migrations/0003_avaliacao_compra_erp.sql       avaliações, configurações por loja, dados extras cifrados, envios ao ERP
   migrations/0004_portal_pf_declaracoes.sql      sessão PF, declarações do titular (ocorrência), gate na conclusão
   migrations/0005_expiracao_e_lembretes.sql     lembretes de garantia enviados (e o agendamento da rotina)
+  migrations/0006_lgpd_acesso_e_expurgo.sql     log de acesso a documento/selfie (imutável) e marca de expurgo
   config.toml                            aceite e certificado são públicos (verify_jwt = false)
 src/
   api/types.ts     o contrato — a interface só conhece isto
@@ -94,7 +102,7 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 **Antes de qualquer coisa: ligue o repositório no GitHub.** A versão anterior deste projeto foi perdida por não estar versionada.
 
 1. Crie o projeto em <https://supabase.com>. Anote **Project URL**, **anon key** e **service_role key**.
-2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002` a `0005`, na ordem. (Ou `supabase db push` com o CLI.)
+2. **SQL Editor** → cole e rode `supabase/migrations/0001_schema.sql` inteiro. Depois `0002` a `0006`, na ordem. (Ou `supabase db push` com o CLI.)
 3. **Settings → Edge Functions → Secrets**:
    ```
    REGISTRY_PII_KEY      = <32 bytes em base64>   # cifra CPF/CNPJ
@@ -164,10 +172,8 @@ Comandos: `npm run dev` · `npm run build` · `npm test` · `npm run typecheck` 
 
 **Falta:**
 - **PJ→PJ** (lote). O banco e a máquina de estados já suportam.
-- **PDF** do certificado (hoje é HTML imprimível; o hash já é determinístico).
-- Remoção de EXIF em **WebP/HEIC** (hoje: recusa para documento/selfie; aceita para fotos do aparelho).
 - Provedor **real** de consulta de IMEI (o contrato já é o de provedor real — trocar `simularConsulta`).
-- Retenção/expurgo de evidência pessoal (LGPD) e log de acesso a documento/selfie.
+- **Prazo de retenção** de documento/selfie (5 anos, padrão provisório) — falta o parecer jurídico confirmar.
 - Integração com o ERP Sheik CRM 360 (entrada de estoque e rascunho a partir da avaliação de usados).
 - **Gate jurídico** (seção 10 do dossiê). Enquanto não fechar, **nenhum CPF real entra** — nem no Supabase.
 

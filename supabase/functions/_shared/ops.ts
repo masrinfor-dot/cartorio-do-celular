@@ -4,7 +4,7 @@
 // nunca uma segunda implementação.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
-  DomainError, INVITE_TTL_MS, LEMBRETE_GARANTIA_DIAS, deveExpirar, garantiaDe, nomeCurto, cifrar, descreverFaltantes, documentoValido, gerarProtocolo, gerarToken, hashDocumento, hashTerms, imeiValido, mascararTelefone, onlyDigits, sha256Hex, simularConsulta,
+  DomainError, INVITE_TTL_MS, LEMBRETE_GARANTIA_DIAS, RETENCAO_EVIDENCIA_DIAS, SLOTS_PESSOAIS, deveExpirar, evidenciaVencida, garantiaDe, nomeCurto, cifrar, descreverFaltantes, documentoValido, gerarProtocolo, gerarToken, hashDocumento, hashTerms, imeiValido, mascararTelefone, onlyDigits, sha256Hex, simularConsulta,
   type TermsPayload, type TransactionKind,
 } from "./core/index.ts";
 import { auditar, env, lancarSeErro, traduzirErroBanco } from "./server.ts";
@@ -250,4 +250,26 @@ export async function lembrarGarantias(admin: SupabaseClient, agora = new Date()
     } catch { falhas++; }
   }
   return { avisados, falhas };
+}
+
+/**
+ * Expurgo LGPD: apaga o ARQUIVO de documento e selfie de registros concluídos há mais que o
+ * prazo de retenção. Fica o SHA-256 e a marca `purged_at` — prova de que existiu, sem a imagem.
+ */
+export async function purgarEvidencias(admin: SupabaseClient, agora = new Date()): Promise<number> {
+  const limite = new Date(agora.getTime() - RETENCAO_EVIDENCIA_DIAS * 86_400_000).toISOString();
+  const { data: txs, error } = await admin.from("registry_transactions").select("id, store_id").eq("state", "completed").lt("completed_at", limite).limit(500);
+  lancarSeErro(error);
+  let n = 0;
+  for (const t of txs ?? []) {
+    const { data: fotos } = await admin.from("registry_device_media").select("id, storage_key, slot").eq("transaction_id", t.id).in("slot", [...SLOTS_PESSOAIS]).is("purged_at", null);
+    for (const f of fotos ?? []) {
+      const { error: eRm } = await admin.storage.from("registry-media").remove([f.storage_key as string]);
+      if (eRm) continue; // não marca como apagada se o arquivo ainda existe
+      await admin.from("registry_device_media").update({ purged_at: agora.toISOString() }).eq("id", f.id);
+      await auditar(admin, t.store_id as string | null, null, "media.purged", "media", f.id as string, { slot: f.slot });
+      n++;
+    }
+  }
+  return n;
 }

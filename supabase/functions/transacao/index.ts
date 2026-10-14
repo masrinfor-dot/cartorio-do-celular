@@ -13,7 +13,7 @@ servir(async (req, ctx, body) => {
 
   if (op === "listar") {
     const { data } = await admin.from("registry_transactions").select("*").eq("store_id", store.id).order("created_at", { ascending: false }).limit(200);
-    return Promise.all((data ?? []).map((t) => txView(admin, t as TxRow)));
+    return Promise.all((data ?? []).map((t) => txView(admin, t as TxRow, { evidencia: false })));
   }
 
   if (op === "estoque") {
@@ -36,7 +36,7 @@ servir(async (req, ctx, body) => {
 
   const t = await obterTx(admin, String(body.transaction_id ?? ""), store.id);
 
-  if (op === "obter") return txView(admin, t);
+  if (op === "obter") return txView(admin, t, { ator: { user_id: user.id } });
 
   if (op === "mudar_estado") {
     await mudarEstado(admin, t, body.novo_estado as TransactionState);

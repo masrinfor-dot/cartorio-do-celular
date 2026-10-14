@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
   DomainError,
+  SLOTS_PESSOAIS,
   acceptanceStatus,
   mascararImei,
   mascararTelefone,
@@ -111,14 +112,26 @@ export async function buscaAparelho(admin: SupabaseClient, device_id: string, st
   };
 }
 
-export async function txView(admin: SupabaseClient, t: TxRow) {
+/**
+ * `evidencia: false` (listas) não assina documento/selfie — quem só lista não precisa ver.
+ * `ator` registra no log de acesso quem abriu documento/selfie desta transação.
+ */
+export interface OpcoesTxView { evidencia?: boolean; ator?: { user_id?: string | null; party_id?: string | null } }
+
+export async function txView(admin: SupabaseClient, t: TxRow, op: OpcoesTxView = {}) {
   const device_id = await deviceIdDaTx(admin, t.id).catch(() => null);
   const parties = await partesDaTx(admin, t.id);
   const partiesFull = await Promise.all(parties.map(async (p) => ({ ...p, ...(await partyView(admin, p.party_id)) })));
   const terms = await termosVigentes(admin, t);
-  const { data: media } = await admin.from("registry_device_media").select("id, slot, sha256, storage_key").eq("transaction_id", t.id);
+  const { data: media } = await admin.from("registry_device_media").select("id, slot, sha256, storage_key, purged_at").eq("transaction_id", t.id);
+  const comEvidencia = op.evidencia !== false;
   const mediaViews = await Promise.all((media ?? []).map(async (m) => {
+    const pessoal = (SLOTS_PESSOAIS as readonly string[]).includes(m.slot as string);
+    if (m.purged_at || (pessoal && !comEvidencia)) return { media_id: m.id as string, slot: m.slot, sha256: m.sha256 as string, url: "" };
     const { data: signed } = await admin.storage.from("registry-media").createSignedUrl(m.storage_key as string, 60);
+    if (pessoal && op.ator) {
+      await admin.from("registry_access_log").insert({ store_id: t.store_id, actor_user_id: op.ator.user_id ?? null, actor_party_id: op.ator.party_id ?? null, subject_type: "media", subject_id: m.id, detail: { slot: m.slot } });
+    }
     return { media_id: m.id as string, slot: m.slot, sha256: m.sha256 as string, url: signed?.signedUrl ?? "" };
   }));
   const { data: convites } = await admin.from("registry_acceptance_invites").select("id, party_id, terms_version, destination_masked, consumed_at, revoked_at, expires_at").eq("transaction_id", t.id);
