@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2F3B9C" />
+  <title>Cartório do Celular — Passou de mão, passa no Cartório</title>
+  <meta name="description" content="Registro de procedência de celulares usados. Cada compra, venda ou troca vira um elo assinado pelo dono do aparelho, no celular dele — um histórico que atravessa lojas e não pode ser alterado depois." />
+  <meta property="og:title" content="Cartório do Celular" />
+  <meta property="og:description" content="Passou de mão, passa no Cartório. O registro de procedência de celulares usados." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f3b9c'/%3E%3Crect x='10' y='5' width='12' height='22' rx='3' fill='white'/%3E%3Crect x='12' y='8' width='8' height='14' rx='1' fill='%232f3b9c'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ——— Identidade visual v1: Tinta / Lacre / Papel. Sem verde. ——— */
+    :root {
+      --papel: #F4F1E9;
+      --papel-2: #EAE5D8;
+      --linha: #D6D0C2;
+      --grafite: #17171F;
+      --texto-2: #4A4A55;
+      --tinta: #2F3B9C;
+      --tinta-escura: #232C78;
+      --tinta-suave: #E3E6F5;
+      --lacre: #B34E27;
+      --lacre-claro: #E8835A;
+      --declarado-fundo: #F3E7C9;
+      --declarado-texto: #7A4F08;
+      --restricao-fundo: #F4DEDA;
+      --restricao-texto: #8E2F2A;
+      --display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+      --texto: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --largura: 1140px;
+      --gutter: 16px;
+      --raio: 8px;
+    }
+    @media (min-width: 720px) { :root { --gutter: 32px; } }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0;
+      background: var(--papel);
+      color: var(--grafite);
+      font-family: var(--texto);
+      font-size: 17px;
+      line-height: 1.6;
+      font-feature-settings: "kern", "liga";
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    img, svg { display: block; max-width: 100%; }
+    a { color: var(--tinta); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: var(--tinta-escura); }
+    :focus-visible { outline: 2px solid var(--tinta); outline-offset: 3px; border-radius: 3px; }
+    p { margin: 0 0 1em; max-width: 62ch; }
+    h1, h2, h3 { font-family: var(--display); margin: 0; font-variation-settings: "opsz" 96; }
+    h1 { font-weight: 800; font-size: clamp(2.5rem, 6.2vw, 4.75rem); line-height: 1; letter-spacing: -0.025em; text-wrap: balance; }
+    h2 { font-weight: 700; font-size: clamp(1.9rem, 3.4vw, 2.7rem); line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; max-width: 22ch; margin-bottom: 0.5em; }
+    h3 { font-weight: 700; font-size: 1.25rem; line-height: 1.25; letter-spacing: -0.01em; }
+    .mono { font-family: var(--mono); font-variation-settings: normal; font-feature-settings: "tnum"; }
+    .sec { color: var(--texto-2); }
+
+    .wrap { width: min(100% - 2 * var(--gutter), var(--largura)); margin-inline: auto; }
+    section { padding-block: clamp(64px, 9vw, 112px); border-top: 1px solid var(--linha); }
+    section > .wrap > h2 { margin-bottom: 0.5em; }
+    .intro { font-size: 1.2rem; line-height: 1.5; max-width: 54ch; }
+    .grid-2 { display: grid; gap: 40px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: start; } }
+
+    /* Botões */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--texto); font-weight: 600; font-size: 1rem; line-height: 1;
+      padding: 14px 20px; border-radius: var(--raio); border: 1px solid transparent;
+      cursor: pointer; text-decoration: none; white-space: nowrap;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .btn-tinta { background: var(--tinta); color: var(--papel); }
+    .btn-tinta:hover { background: var(--tinta-escura); color: var(--papel); }
+    .btn-contorno { background: transparent; color: var(--tinta); border-color: var(--tinta); }
+    .btn-contorno:hover { background: var(--tinta-suave); color: var(--tinta-escura); }
+    .btn-papel { background: var(--papel); color: var(--tinta); }
+    .btn-papel:hover { background: #fff; color: var(--tinta-escura); }
+
+    /* Marca */
+    .marca { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+    .marca .nome { font-family: var(--display); font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; line-height: 1; font-variation-settings: "opsz" 24; white-space: nowrap; }
+    .marca .nome b { font-weight: 500; }
+
+    /* Navegação */
+    header.topo { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--papel) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--linha); }
+    .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 68px; }
+    .nav-links { display: none; gap: 24px; margin: 0; padding: 0; list-style: none; }
+    .nav-links a { color: var(--grafite); text-decoration: none; font-weight: 600; font-size: .98rem; white-space: nowrap; }
+    .nav-links a:hover { color: var(--tinta); }
+    .nav-acoes { display: none; gap: 10px; }
+    .menu { position: relative; }
+    .menu summary { list-style: none; cursor: pointer; font-weight: 600; padding: 10px 14px; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--papel-2); }
+    .menu summary::-webkit-details-marker { display: none; }
+    .menu[open] summary { border-color: var(--tinta); }
+    .menu-lista { position: absolute; right: 0; top: calc(100% + 8px); background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio); padding: 10px; display: grid; gap: 4px; min-width: 240px; box-shadow: 0 12px 32px -16px rgba(23,23,31,.35); }
+    .menu-lista a { display: block; padding: 10px 12px; border-radius: 6px; color: var(--grafite); text-decoration: none; font-weight: 600; }
+    .menu-lista a:hover { background: var(--papel-2); }
+    .menu-lista .btn { margin-top: 6px; }
+    @media (min-width: 1080px) {
+      .nav-links, .nav-acoes { display: flex; align-items: center; }
+      .menu { display: none; }
+    }
+
+    /* Abertura */
+    .abertura { border-top: 0; padding-block: clamp(48px, 7vw, 96px) clamp(56px, 8vw, 104px); }
+    .abertura .grid-2 { align-items: center; }
+    .abertura h1 { color: var(--tinta); }
+    .abertura .intro { margin-top: 28px; }
+    .consulta { margin-top: 36px; max-width: 520px; }
+    .consulta label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .consulta .campo { display: flex; gap: 8px; flex-wrap: wrap; }
+    .consulta input {
+      flex: 1 1 240px; min-width: 0; font-family: var(--mono); font-size: 1.05rem; letter-spacing: .04em;
+      padding: 13px 14px; border: 1px solid var(--linha); border-radius: var(--raio); background: #fff; color: var(--grafite);
+    }
+    .consulta input::placeholder { color: #8d8a80; letter-spacing: 0; font-family: var(--texto); font-size: 1rem; }
+    .consulta input:focus { border-color: var(--tinta); outline: 2px solid var(--tinta); outline-offset: 0; }
+    .consulta small { display: block; margin-top: 10px; color: var(--texto-2); font-size: .92rem; }
+    .abertura .demo { margin-top: 20px; color: var(--texto-2); }
+    .abertura .demo a { font-weight: 600; }
+
+    /* Passaporte (o elemento memorável) */
+    .passaporte {
+      background: var(--papel-2); border: 1px solid var(--linha); border-radius: 14px;
+      padding: 24px; position: relative; overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 24px 60px -36px rgba(47,59,156,.35);
+    }
+    @media (min-width: 720px) { .passaporte { padding: 32px; } }
+    .passaporte::after {
+      content: ""; position: absolute; inset: 10px; border: 1px dashed var(--linha); border-radius: 8px; pointer-events: none;
+    }
+    .pass-cabeca { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+    .pass-titulo { font-family: var(--display); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+    .pass-aparelho { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; }
+    .pass-aparelho strong { font-family: var(--display); font-weight: 700; font-size: 1.35rem; letter-spacing: -0.015em; }
+    .pass-aparelho .mono { color: var(--texto-2); font-size: .98rem; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+      font-size: .88rem; font-weight: 600; line-height: 1; border: 1px solid transparent; white-space: nowrap;
+    }
+    .pill .data { font-family: var(--mono); font-weight: 500; opacity: .9; }
+    .pill-verificado { background: var(--tinta); color: var(--papel); }
+    .pill-declarado { background: var(--declarado-fundo); color: var(--declarado-texto); border: 1px dashed var(--declarado-texto); }
+    .pill-restricao { background: var(--restricao-fundo); color: var(--restricao-texto); }
+    .pill-neutro { background: var(--papel-2); color: var(--texto-2); border: 1px solid var(--linha); }
+    .pill-lacre { background: var(--lacre); color: var(--papel); }
+    .pass-status { margin-top: 14px; }
+
+    .cadeia { margin: 26px 0 0; padding: 0; list-style: none; position: relative; }
+    .cadeia::before { content: ""; position: absolute; left: 15px; top: 18px; bottom: 18px; width: 2px; background: var(--linha); }
+    .elo { position: relative; display: grid; grid-template-columns: 32px 1fr; gap: 14px; padding: 12px 0; align-items: start; }
+    .elo .icone { width: 32px; height: 32px; border-radius: 50%; background: var(--papel-2); display: grid; place-items: center; position: relative; z-index: 1; }
+    .elo .quem { font-weight: 600; }
+    .elo .meta { color: var(--texto-2); font-size: .92rem; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; }
+    .elo .meta .mono { font-size: .88rem; }
+    .pass-rodape { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linha); display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .pass-rodape .protocolo { font-size: .9rem; color: var(--texto-2); }
+    .pass-rodape .protocolo .mono { color: var(--grafite); font-weight: 500; display: block; font-size: 1rem; }
+    .qr { width: 64px; height: 64px; background: #fff; border: 1px solid var(--linha); border-radius: 6px; padding: 6px; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .elo { opacity: 0; transform: translateY(6px); animation: lacrar .5s cubic-bezier(.2,.7,.2,1) forwards; }
+      .elo:nth-child(1) { animation-delay: .9s; }
+      .elo:nth-child(2) { animation-delay: .6s; }
+      .elo:nth-child(3) { animation-delay: .3s; }
+      .pass-status .pill { opacity: 0; animation: lacrar .5s cubic-bezier(.2,.7,.2,1) 1.35s forwards; }
+      @keyframes lacrar { to { opacity: 1; transform: none; } }
+    }
+
+    /* Por que existe */
+    .porque { border-top: 1px solid var(--linha); background: var(--papel-2); padding-block: clamp(40px, 5vw, 64px); }
+    .porque .wrap { display: grid; gap: 24px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .porque .wrap { grid-template-columns: repeat(3, 1fr); gap: 48px; } }
+    .porque p { margin: 0; font-size: 1.12rem; line-height: 1.5; max-width: 34ch; text-wrap: pretty; }
+    .porque p strong { font-family: var(--display); font-weight: 700; color: var(--tinta); }
+
+    /* Como funciona (sequência real) */
+    .passos { margin: 48px 0 0; padding: 0; list-style: none; counter-reset: passo; display: grid; gap: 0; }
+    .passo { counter-increment: passo; display: grid; grid-template-columns: 64px 1fr; gap: 20px; padding: 28px 0; border-top: 1px solid var(--linha); }
+    .passo:last-child { border-bottom: 1px solid var(--linha); }
+    .passo::before { content: counter(passo); font-family: var(--display); font-weight: 800; font-size: 2.4rem; line-height: 1; color: var(--tinta); letter-spacing: -0.03em; }
+    .passo h3 { margin-bottom: 8px; }
+    .passo p { margin: 0; max-width: 58ch; }
+    @media (min-width: 900px) {
+      .passos { grid-template-columns: repeat(2, 1fr); column-gap: 48px; }
+      .passo { border-top: 1px solid var(--linha); }
+      .passo:nth-child(3), .passo:nth-child(4) { border-bottom: 1px solid var(--linha); }
+    }
+
+    /* Linguagem do passaporte */
+    .estados { display: grid; gap: 16px; margin-top: 40px; }
+    .estado { display: grid; gap: 10px; padding: 22px; border: 1px solid var(--linha); border-radius: var(--raio); background: #fff; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .estado { grid-template-columns: 270px 1fr; gap: 20px; align-items: start; } }
+    .estado .pill { justify-self: start; }
+    .estado p { margin: 0; }
+    .estado p + p { margin-top: 6px; color: var(--texto-2); font-size: .95rem; }
+    .nota-tom { margin-top: 32px; padding: 22px 24px; border-left: 3px solid var(--tinta); background: var(--tinta-suave); border-radius: 0 var(--raio) var(--raio) 0; }
+    .nota-tom p { margin: 0; }
+    .nota-tom s { text-decoration-color: var(--restricao-texto); color: var(--texto-2); }
+
+    /* Para lojas / Para pessoas */
+    .lista-recursos { margin: 36px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+    .lista-recursos li { padding: 18px 0; border-top: 1px solid var(--linha); display: grid; gap: 4px; }
+    .lista-recursos li:last-child { border-bottom: 1px solid var(--linha); }
+    .lista-recursos strong { font-family: var(--display); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; }
+    .lista-recursos p { margin: 0; max-width: 60ch; }
+    .lojas .grid-2 > div:first-child { position: sticky; top: 96px; }
+    .selos { display: grid; gap: 14px; margin-top: 40px; }
+    .selo {
+      display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px;
+      padding: 18px 20px; border-radius: 10px; border: 1.5px solid var(--tinta); background: var(--papel);
+    }
+    .selo .frase { font-family: var(--display); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; line-height: 1.2; }
+    .selo .nivel { font-size: .9rem; color: var(--texto-2); margin-top: 4px; }
+    .selo .qr { width: 48px; height: 48px; }
+    .selo-verificada { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+    .selo-verificada .nivel { color: color-mix(in srgb, var(--papel) 80%, transparent); }
+    .selo-fundadora { background: var(--lacre); color: var(--papel); border-color: var(--lacre); }
+    .selo-fundadora .nivel { color: color-mix(in srgb, var(--papel) 85%, transparent); }
+    .selo-legenda { margin-top: 14px; font-size: .92rem; color: var(--texto-2); }
+    .pessoas .acao { margin-top: 36px; }
+
+    /* Lei 12.144 */
+    .lei .intro { margin-bottom: 36px; }
+    table.exigencias { width: 100%; border-collapse: collapse; font-size: 1rem; }
+    table.exigencias th, table.exigencias td { text-align: left; vertical-align: top; padding: 14px 16px 14px 0; border-top: 1px solid var(--linha); }
+    table.exigencias thead th { font-family: var(--display); font-weight: 700; font-size: 1.05rem; border-top: 0; padding-top: 0; }
+    table.exigencias tbody tr:last-child td { border-bottom: 1px solid var(--linha); }
+    table.exigencias td:first-child { font-weight: 600; width: 42%; }
+    table.exigencias td:last-child { color: var(--texto-2); }
+    .lei-lado { display: grid; gap: 20px; }
+    .multas { padding: 22px 24px; border: 1px solid var(--linha); border-radius: var(--raio); background: #fff; }
+    .multas h3 { margin-bottom: 12px; }
+    .multas dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+    .multas dt { font-family: var(--mono); font-weight: 500; color: var(--tinta); white-space: nowrap; }
+    .multas dd { margin: 0; color: var(--texto-2); }
+    .aviso-juridico { padding: 22px 24px; border-left: 3px solid var(--lacre); background: #fff; border-radius: 0 var(--raio) var(--raio) 0; }
+    .aviso-juridico p { margin: 0; }
+    .aviso-juridico p + p { margin-top: 10px; color: var(--texto-2); font-size: .95rem; }
+    @media (min-width: 900px) {
+      .lei .grid-2 { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    }
+
+    /* Princípios (banda em Tinta) */
+    .principios { background: var(--tinta); color: var(--papel); border-top: 0; }
+    .principios h2 { color: var(--papel); }
+    .principios .intro { color: color-mix(in srgb, var(--papel) 82%, transparent); }
+    .regras { margin: 44px 0 0; padding: 0; list-style: none; display: grid; gap: 0; grid-template-columns: 1fr; }
+    .regra { padding: 24px 0; border-top: 1px solid color-mix(in srgb, var(--papel) 28%, transparent); }
+    .regra h3 { color: var(--papel); margin-bottom: 8px; }
+    .regra p { margin: 0; color: color-mix(in srgb, var(--papel) 82%, transparent); max-width: 44ch; }
+    @media (min-width: 900px) { .regras { grid-template-columns: repeat(2, 1fr); column-gap: 56px; } }
+    @media (min-width: 1100px) { .regras { grid-template-columns: repeat(3, 1fr); } }
+
+    /* Fundadoras */
+    .form { display: grid; gap: 16px; background: #fff; border: 1px solid var(--linha); border-radius: 12px; padding: 24px; }
+    @media (min-width: 720px) { .form { padding: 32px; grid-template-columns: 1fr 1fr; } .form .cheio { grid-column: 1 / -1; } }
+    .form label { display: grid; gap: 6px; font-weight: 600; font-size: .95rem; }
+    .form input, .form select {
+      font: inherit; font-weight: 400; color: var(--grafite); background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio);
+      padding: 12px 14px; min-width: 0; width: 100%;
+    }
+    .form input:focus, .form select:focus { border-color: var(--tinta); outline: 2px solid var(--tinta); outline-offset: 0; }
+    .form .acoes { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .form .retorno { margin: 0; padding: 14px 16px; border-radius: var(--raio); background: var(--tinta-suave); color: var(--tinta-escura); font-weight: 600; }
+    .form .retorno small { display: block; font-weight: 400; color: var(--texto-2); margin-top: 4px; }
+
+    /* Perguntas */
+    .perguntas details { border-top: 1px solid var(--linha); }
+    .perguntas details:last-of-type { border-bottom: 1px solid var(--linha); }
+    .perguntas summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; font-family: var(--display); font-weight: 700; font-size: 1.15rem; letter-spacing: -0.01em; position: relative; }
+    .perguntas summary::-webkit-details-marker { display: none; }
+    .perguntas summary::after { content: "+"; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-weight: 500; font-size: 1.5rem; color: var(--tinta); transition: transform .2s ease; }
+    .perguntas details[open] summary::after { transform: translateY(-50%) rotate(45deg); }
+    .perguntas details p { margin: 0 0 20px; max-width: 64ch; color: var(--texto-2); }
+    .perguntas .lista { margin-top: 32px; }
+
+    /* Rodapé */
+    footer { border-top: 1px solid var(--linha); background: var(--papel-2); padding-block: 48px; font-size: .95rem; }
+    footer .wrap { display: grid; gap: 28px; }
+    @media (min-width: 900px) { footer .wrap { grid-template-columns: 1.4fr 1fr 1fr; gap: 48px; } }
+    footer ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    footer a { color: var(--grafite); }
+    footer a:hover { color: var(--tinta); }
+    footer .demo-aviso { margin-top: 14px; display: inline-block; padding: 8px 12px; border: 1px dashed var(--declarado-texto); border-radius: 8px; background: var(--declarado-fundo); color: var(--declarado-texto); font-weight: 600; font-size: .88rem; line-height: 1.35; }
+    footer .legal { grid-column: 1 / -1; padding-top: 24px; border-top: 1px solid var(--linha); color: var(--texto-2); display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+    footer .legal p { margin: 0; max-width: none; }
+  </style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="wrap nav">
+    <a class="marca" href="#inicio" aria-label="Cartório do Celular — início">
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="7" width="13" height="21" rx="4" transform="rotate(-18 9.5 17.5)" stroke="#2F3B9C" stroke-width="3"/><rect x="16" y="4" width="13" height="21" rx="4" transform="rotate(-18 22.5 14.5)" stroke="#B34E27" stroke-width="3"/></svg>
+      <span class="nome">cartório <b>do</b> celular</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#como-funciona">Como funciona</a></li>
+      <li><a href="#lojas">Para lojas</a></li>
+      <li><a href="#pessoas">Para pessoas</a></li>
+      <li><a href="#lei">Lei 12.144</a></li>
+      <li><a href="#perguntas">Perguntas</a></li>
+    </ul>
+    <div class="nav-acoes">
+      <a class="btn btn-contorno" href="#consultar">Consultar aparelho</a>
+      <a class="btn btn-tinta" href="../entrar">Entrar na loja</a>
+    </div>
+    <details class="menu">
+      <summary aria-label="Abrir menu">Menu</summary>
+      <nav class="menu-lista">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#lojas">Para lojas</a>
+        <a href="#pessoas">Para pessoas</a>
+        <a href="#lei">Lei 12.144</a>
+        <a href="#perguntas">Perguntas</a>
+        <a class="btn btn-contorno" href="#consultar">Consultar aparelho</a>
+        <a class="btn btn-tinta" href="../entrar">Entrar na loja</a>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<main id="inicio">
+
+  <section class="abertura">
+    <div class="wrap grid-2">
+      <div>
+        <h1>Passou de mão, passa no Cartório.</h1>
+        <p class="intro">O Cartório do Celular registra a procedência de celulares usados. Cada compra, venda ou troca vira um elo assinado pelo dono do aparelho, no celular dele — um histórico que atravessa lojas e não pode ser alterado depois.</p>
+
+        <form class="consulta" id="consultar" action="../passaporte" method="get">
+          <label for="imei">Puxar a ficha de um aparelho</label>
+          <div class="campo">
+            <input id="imei" name="imei" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="IMEI com 15 dígitos (disque *#06#)" aria-describedby="imei-ajuda" />
+            <button class="btn btn-tinta" type="submit">Consultar</button>
+          </div>
+          <small id="imei-ajuda">A consulta pública mostra o histórico registrado, sem nome completo nem CPF de ninguém.</small>
+        </form>
+
+        <p class="demo"><a href="../">Abrir a demonstração do sistema</a> — dados sintéticos, nada aqui é real.</p>
+      </div>
+
+      <article class="passaporte" aria-label="Exemplo de passaporte de aparelho">
+        <div class="pass-cabeca">
+          <div class="pass-titulo">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="7" width="13" height="21" rx="4" transform="rotate(-18 9.5 17.5)" stroke="#2F3B9C" stroke-width="3"/><rect x="16" y="4" width="13" height="21" rx="4" transform="rotate(-18 22.5 14.5)" stroke="#B34E27" stroke-width="3"/></svg>
+            Passaporte do aparelho
+          </div>
+          <span class="pill pill-neutro">Exemplo</span>
+        </div>
+
+        <div class="pass-aparelho">
+          <strong>iPhone 13, 128 GB, meia-noite</strong>
+          <span class="mono">IMEI 35 •••• ••• 4821</span>
+        </div>
+        <div class="pass-status">
+          <span class="pill pill-verificado">Verificado <span class="data">12/10/2026, 14:32</span></span>
+        </div>
+
+        <ol class="cadeia" aria-label="Histórico de passagens, da mais recente para a mais antiga">
+          <li class="elo">
+            <span class="icone"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="7" width="13" height="21" rx="4" transform="rotate(-18 9.5 17.5)" stroke="#2F3B9C" stroke-width="3"/><rect x="16" y="4" width="13" height="21" rx="4" transform="rotate(-18 22.5 14.5)" stroke="#B34E27" stroke-width="3"/></svg></span>
+            <div>
+              <div class="quem">Horizonte Celulares vendeu para Mariana F.</div>
+              <div class="meta"><span class="mono">12/10/2026</span><span>Aceite no celular da compradora</span><span>Garantia de 90 dias</span></div>
+            </div>
+          </li>
+          <li class="elo">
+            <span class="icone"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="7" width="13" height="21" rx="4" transform="rotate(-18 9.5 17.5)" stroke="#2F3B9C" stroke-width="3"/><rect x="16" y="4" width="13" height="21" rx="4" transform="rotate(-18 22.5 14.5)" stroke="#2F3B9C" stroke-width="3"/></svg></span>
+            <div>
+              <div class="quem">Carlos A. entregou à Horizonte Celulares</div>
+              <div class="meta"><span class="mono">02/09/2026</span><span>Destino: revenda</span><span>Aceite no celular do vendedor</span></div>
+            </div>
+          </li>
+          <li class="elo">
+            <span class="icone"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="7" width="13" height="21" rx="4" transform="rotate(-18 9.5 17.5)" stroke="#7A4F08" stroke-width="3" stroke-dasharray="3 3"/><rect x="16" y="4" width="13" height="21" rx="4" transform="rotate(-18 22.5 14.5)" stroke="#2F3B9C" stroke-width="3"/></svg></span>
+            <div>
+              <div class="quem">Comunicação de venda declarada por Carlos A.</div>
+              <div class="meta"><span class="mono">15/03/2025</span><span class="pill pill-declarado">Declarado</span><span>Primeiro registro no Cartório</span></div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="pass-rodape">
+          <div class="protocolo">Protocolo <span class="mono">CC-2026-000418-7</span></div>
+          <svg class="qr" viewBox="0 0 21 21" aria-hidden="true" shape-rendering="crispEdges" fill="#17171F">
+            <path d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2z"/>
+            <path d="M8 0h1v1H8zM10 0h1v2h-1zM12 1h1v1h-1zM8 2h2v1H8zM11 3h2v1h-2zM8 4h1v1H8zM10 5h1v1h-1zM12 5h1v1h-1zM8 6h1v1H8zM0 8h1v1H0zM2 8h2v1H2zM5 8h1v1H5zM7 8h2v1H7zM10 8h1v1h-1zM12 8h3v1h-3zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM1 10h1v1H1zM3 10h1v1H3zM6 10h2v1H6zM9 10h2v1H9zM13 10h1v1h-1zM15 10h2v1h-2zM19 10h2v1h-2zM0 12h2v1H0zM4 12h1v1H4zM7 12h1v1H7zM9 12h1v1H9zM11 12h3v1h-3zM16 12h1v1h-1zM18 12h1v1h-1zM20 12h1v1h-1zM8 14h1v1H8zM10 14h2v1h-2zM13 14h1v1h-1zM15 14h1v1h-1zM18 14h2v1h-2zM9 16h1v1H9zM12 16h1v1h-1zM14 16h1v1h-1zM17 16h1v1h-1zM20 16h1v1h-1zM8 18h2v1H8zM11 18h1v1h-1zM13 18h3v1h-3zM18 18h1v1h-1zM8 20h1v1H8zM10 20h1v1h-1zM12 20h1v1h-1zM15 20h2v1h-2zM19 20h2v1h-2z"/>
+          </svg>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="porque">
+    <div class="wrap">
+      <p><strong>O celular é o bem mais furtado e roubado do Brasil.</strong> Aparelhos sem procedência chegam todos os dias às lojas de conserto e revenda.</p>
+      <p><strong>Quem compra usado não tem como saber de onde ele veio.</strong> A prova, quando existe, é um caderno, uma conversa de WhatsApp ou a palavra de quem vende.</p>
+      <p><strong>Para o carro existe a transferência.</strong> Para o celular, até agora, não existia nada. É isso que o Cartório faz.</p>
+    </div>
+  </div>
+
+  <section id="como-funciona">
+    <div class="wrap">
+      <h2>Quatro passos, e o aparelho ganha um passado que se pode conferir.</h2>
+      <p class="intro">O balcão da loja ou o portal da pessoa física começam o registro. O aceite é sempre de quem é dono.</p>
+      <ol class="passos">
+        <li class="passo">
+          <div>
+            <h3>O aparelho entra pelo balcão</h3>
+            <p>A loja lê o IMEI, consulta a procedência e registra quem está entregando, com foto do documento e do aparelho. Já define o destino: revenda ou desmonte para peças.</p>
+          </div>
+        </li>
+        <li class="passo">
+          <div>
+            <h3>O dono assina no próprio celular</h3>
+            <p>O código de confirmação vai para o WhatsApp de quem vende. O operador da loja nunca aceita no lugar do cliente — e nunca vê o código.</p>
+          </div>
+        </li>
+        <li class="passo">
+          <div>
+            <h3>O elo é lacrado</h3>
+            <p>Termo congelado por hash, data e hora, fotos sem metadados de localização. O registro não se edita nem se apaga; o que vem depois é um novo elo.</p>
+          </div>
+        </li>
+        <li class="passo">
+          <div>
+            <h3>O próximo dono recebe o passaporte</h3>
+            <p>Certificado com QR e consulta pública que mostra o histórico sem expor dados pessoais. O aparelho passa a aparecer em "Meus aparelhos" do novo titular.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="passaporte">
+    <div class="wrap">
+      <h2>O passaporte diz o que consta. Não julga.</h2>
+      <p class="intro">Toda consulta é uma fotografia com data e hora. Quatro estados cobrem tudo o que o Cartório pode dizer de um aparelho.</p>
+
+      <div class="estados">
+        <div class="estado">
+          <span class="pill pill-verificado">Verificado <span class="data">12/10/2026, 14:32</span></span>
+          <div>
+            <p>Sem restrição na consulta de procedência naquela data e hora, e aceite confirmado no celular do próprio dono.</p>
+            <p>Sempre acompanhado da data. Uma consulta de ontem não vale por hoje.</p>
+          </div>
+        </div>
+        <div class="estado">
+          <span class="pill pill-declarado">Declarado</span>
+          <div>
+            <p>O titular registrado declarou uma venda ou um checklist de condições, sem a confirmação da outra parte.</p>
+            <p>A borda tracejada diferencia pela forma, não só pela cor. Declaração é o que a pessoa disse — não o que o Cartório verificou.</p>
+          </div>
+        </div>
+        <div class="estado">
+          <span class="pill pill-restricao">Consta restrição</span>
+          <div>
+            <p>Consta registro na base consultada, com nome da base e data: "Consta restrição na base Celular Seguro em 03/08/2026". Nenhuma transferência se conclui enquanto a restrição estiver ativa.</p>
+            <p>Texto factual. O Cartório informa o que a base disse; não acusa ninguém.</p>
+          </div>
+        </div>
+        <div class="estado">
+          <span class="pill pill-neutro">Sem registro</span>
+          <div>
+            <p>O aparelho ainda não passou pelo Cartório. Não é suspeito — é o começo de um histórico.</p>
+            <p>Por isso o estado é cinza, nunca alerta.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="nota-tom">
+        <p>Palavras que não entram no Cartório: <s>aparelho limpo</s>, <s>ficha suja</s>, <s>aprovado</s>, <s>vendedor suspeito</s>. Uma consulta mostra o que constava numa data e hora. Numa apuração, é isso que vale — não um adjetivo.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="lojas" class="lojas">
+    <div class="wrap grid-2">
+      <div>
+        <h2>Aqui é usado e registrado.</h2>
+        <p class="intro">Para lojas de celular, assistências técnicas e revendas de usados. O Cartório entra no balcão sem trocar o jeito de atender — e sai com um registro que a planilha da loja vizinha nunca vai ter.</p>
+        <div class="selos" aria-label="Selos de vitrine">
+          <div class="selo">
+            <div><div class="frase">Aqui é usado e registrado.</div><div class="nivel">Loja cadastrada</div></div>
+            <svg class="qr" viewBox="0 0 21 21" aria-hidden="true" shape-rendering="crispEdges" fill="#2F3B9C"><path d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM9 1h1v3H9zM11 2h2v1h-2zM8 5h3v1H8zM1 9h2v1H1zM4 8h1v2H4zM6 9h3v1H6zM10 8h1v3h-1zM12 9h3v1h-3zM16 8h2v1h-2zM19 9h2v1h-2zM2 11h1v2H2zM5 11h2v1H5zM8 12h2v1H8zM11 11h1v2h-1zM13 12h3v1h-3zM17 11h1v2h-1zM19 12h2v1h-2zM9 15h2v1H9zM12 14h1v2h-1zM14 15h3v1h-3zM18 14h1v2h-1zM20 15h1v1h-1zM8 17h1v2H8zM10 18h2v1h-2zM13 17h1v2h-1zM15 18h2v1h-2zM19 17h1v2h-1zM9 20h3v1H9zM14 20h1v1h-1zM16 20h3v1h-3z"/></svg>
+          </div>
+          <div class="selo selo-verificada">
+            <div><div class="frase">Aqui é usado e registrado.</div><div class="nivel">Loja verificada</div></div>
+            <svg class="qr" viewBox="0 0 21 21" aria-hidden="true" shape-rendering="crispEdges" fill="#2F3B9C"><path d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM9 1h1v3H9zM11 2h2v1h-2zM8 5h3v1H8zM1 9h2v1H1zM4 8h1v2H4zM6 9h3v1H6zM10 8h1v3h-1zM12 9h3v1h-3zM16 8h2v1h-2zM19 9h2v1h-2zM2 11h1v2H2zM5 11h2v1H5zM8 12h2v1H8zM11 11h1v2h-1zM13 12h3v1h-3zM17 11h1v2h-1zM19 12h2v1h-2zM9 15h2v1H9zM12 14h1v2h-1zM14 15h3v1h-3zM18 14h1v2h-1zM20 15h1v1h-1zM8 17h1v2H8zM10 18h2v1h-2zM13 17h1v2h-1zM15 18h2v1h-2zM19 17h1v2h-1zM9 20h3v1H9zM14 20h1v1h-1zM16 20h3v1h-3z"/></svg>
+          </div>
+          <div class="selo selo-fundadora">
+            <div><div class="frase">Aqui é usado e registrado.</div><div class="nivel">Loja fundadora, desde 2026</div></div>
+            <svg class="qr" viewBox="0 0 21 21" aria-hidden="true" shape-rendering="crispEdges" fill="#B34E27"><path d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM9 1h1v3H9zM11 2h2v1h-2zM8 5h3v1H8zM1 9h2v1H1zM4 8h1v2H4zM6 9h3v1H6zM10 8h1v3h-1zM12 9h3v1h-3zM16 8h2v1h-2zM19 9h2v1h-2zM2 11h1v2H2zM5 11h2v1H5zM8 12h2v1H8zM11 11h1v2h-1zM13 12h3v1h-3zM17 11h1v2h-1zM19 12h2v1h-2zM9 15h2v1H9zM12 14h1v2h-1zM14 15h3v1h-3zM18 14h1v2h-1zM20 15h1v1h-1zM8 17h1v2H8zM10 18h2v1h-2zM13 17h1v2h-1zM15 18h2v1h-2zM19 17h1v2h-1zM9 20h3v1H9zM14 20h1v1h-1zM16 20h3v1h-3z"/></svg>
+          </div>
+        </div>
+        <p class="selo-legenda">Cada selo leva um QR para a página pública da loja, onde qualquer cliente confere o cadastro.</p>
+      </div>
+      <div>
+        <ul class="lista-recursos">
+          <li><strong>Balcão com cronômetro</strong><p>Entrada do aparelho em poucos minutos, com a consulta de procedência antes de fechar. O tempo de cada registro fica medido.</p></li>
+          <li><strong>Avaliação de usados</strong><p>Checklist de condições para Apple e Android, tabelas de margem e valor base, oferta calculada na hora. Estimativa de preço por IA, se a loja quiser.</p></li>
+          <li><strong>Nota de compra e nota de venda</strong><p>Com protocolo, QR e o checklist declarado pelo cliente. Imprime ou envia pelo WhatsApp.</p></li>
+          <li><strong>PDV próprio</strong><p>Para quem usa só o Cartório: venda, aceite do comprador, transferência de propriedade e nota, no mesmo fluxo.</p></li>
+          <li><strong>Estoque e desmonte</strong><p>Aparelho destinado a peças tem as peças resultantes rastreadas e etiquetadas — a procedência não se perde na bancada.</p></li>
+          <li><strong>Lote entre lojas</strong><p>Até 50 aparelhos vendidos a outra loja com um único código de aceite. O que tiver restrição fica fora do convite, com o motivo à vista.</p></li>
+          <li><strong>Integração com o ERP</strong><p>Compra ou venda concluída segue para o seu ERP emitir a NF-e. O Cartório só envia; nada de fora escreve no registro.</p></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="pessoas" class="pessoas">
+    <div class="wrap grid-2">
+      <div>
+        <h2>Antes de comprar, puxa a ficha.</h2>
+        <p class="intro">Para quem compra, vende ou já vendeu um celular usado. Entre com CPF e um código no seu WhatsApp — sem senha, sem loja no meio.</p>
+        <div class="acao"><a class="btn btn-tinta" href="../pf">Entrar em Meus aparelhos</a></div>
+      </div>
+      <div>
+        <ul class="lista-recursos">
+          <li><strong>Meus aparelhos</strong><p>Veja os aparelhos de que você é titular, o fim da garantia de cada um, e baixe o certificado em PDF.</p></li>
+          <li><strong>Vender para outra pessoa</strong><p>O comprador aceita no celular dele; você confirma por último. Fica registrado, com protocolo, sem precisar de loja.</p></li>
+          <li><strong>Comunicar uma venda antiga</strong><p>Vendeu antes de existir o Cartório? Declare. Entra no passaporte como declarado e, se o comprador aceitar, o elo se completa.</p></li>
+          <li><strong>Registrar ocorrência</strong><p>Furto, roubo ou perda, com o número do boletim. Enquanto estiver ativa, nenhuma transferência do aparelho se conclui — e o aviso aparece ao ler o IMEI em qualquer loja.</p></li>
+          <li><strong>Lembrete de garantia</strong><p>O prazo da compra fica no passaporte. Você recebe um lembrete no WhatsApp 7 dias antes de acabar.</p></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="lei" class="lei">
+    <div class="wrap">
+      <h2>Lei 12.144/2026, de Belo Horizonte: o que a lei pede, o que o Cartório registra.</h2>
+      <p class="intro">Sancionada em 24/09/2026 e publicada no dia 25, entra em vigor 90 dias depois — por volta de 24 de dezembro de 2026. Vale para estabelecimentos que consertam ou vendem celulares usados na capital.</p>
+      <div class="grid-2">
+        <div>
+          <table class="exigencias">
+            <thead><tr><th scope="col">A lei exige</th><th scope="col">Onde fica no Cartório</th></tr></thead>
+            <tbody>
+              <tr><td>Nome completo de quem entrega</td><td>Cadastro da parte</td></tr>
+              <tr><td>CPF</td><td>Identificador cifrado, com busca por hash</td></tr>
+              <tr><td>Endereço com CEP</td><td>Contato da parte</td></tr>
+              <tr><td>Telefone ou e-mail</td><td>Contato da parte</td></tr>
+              <tr><td>Marca, modelo e cor</td><td>Cadastro do aparelho</td></tr>
+              <tr><td>IMEI</td><td>Identificador do aparelho, com dígito verificador conferido</td></tr>
+              <tr><td>Data e horário da entrega</td><td>Carimbo de tempo de cada elo</td></tr>
+              <tr><td>Finalidade do aparelho</td><td>Destino: revenda ou desmonte</td></tr>
+              <tr><td>Declaração de procedência assinada</td><td>Termo congelado por hash, aceito no celular do próprio cliente</td></tr>
+              <tr><td>Guarda por 5 anos</td><td>Base que não se edita nem se apaga</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="lei-lado">
+          <div class="multas">
+            <h3>A conta que a loja faz</h3>
+            <dl>
+              <dt>R$ 1.000</dt><dd>na primeira reincidência</dd>
+              <dt>R$ 5.000</dt><dd>na segunda</dd>
+              <dt>Alvará</dt><dd>cassado e loja interditada na terceira</dd>
+            </dl>
+          </div>
+          <div class="aviso-juridico">
+            <p>O Cartório foi desenhado com os campos que a lei pede. Se a sua loja está em conformidade, quem diz é o seu advogado, com o texto integral da lei em mãos — não um software.</p>
+            <p>O que o Cartório garante é o registro: completo, datado e inalterável, com exportação para a autoridade competente quando pedido.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="principios">
+    <div class="wrap">
+      <h2>Seis regras que não mudam.</h2>
+      <p class="intro">Estão no código do sistema, não num manual. Nenhuma tela, plano ou cliente passa por cima delas.</p>
+      <ol class="regras">
+        <li class="regra"><h3>O operador nunca aceita pelo cliente</h3><p>O código vai para o celular de quem vende ou compra, e não aparece na tela da loja. Existe uma exceção presencial — e ela fica marcada para sempre como prova de grau menor.</p></li>
+        <li class="regra"><h3>Nada se altera depois</h3><p>O registro só cresce. Corrigir é escrever um novo elo que diz o que mudou e por quê.</p></li>
+        <li class="regra"><h3>Dados pessoais ficam cifrados</h3><p>A página pública mostra o histórico, não o nome completo nem o CPF. Quem abre um documento ou uma selfie fica registrado, e o arquivo é apagado no fim do prazo de guarda.</p></li>
+        <li class="regra"><h3>Consulta indisponível não libera</h3><p>Se a base de procedência não responde, a transação espera. Indisponível não é "sem restrição".</p></li>
+        <li class="regra"><h3>Mudou o termo, cai o aceite</h3><p>Qualquer alteração nos termos de uma transação invalida as confirmações anteriores. Cada parte aceita exatamente o que vai ficar registrado.</p></li>
+        <li class="regra"><h3>O aparelho é o aparelho, não o IMEI</h3><p>Dois aparelhos nunca têm o mesmo dono ao mesmo tempo, e um IMEI em conflito trava o registro em vez de sobrescrever o anterior.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="fundadoras" class="fundadoras">
+    <div class="wrap grid-2">
+      <div>
+        <h2>As primeiras lojas levam o selo de fundadora.</h2>
+        <p class="intro">Quem começa a registrar agora recebe o selo "Loja fundadora, desde 2026" na vitrine e na página pública — e senta à mesa nas decisões do produto. A entrada em Belo Horizonte vem primeiro, por causa da lei.</p>
+      </div>
+      <form class="form" id="form-fundadora" novalidate>
+        <label>Nome da loja<input name="loja" type="text" autocomplete="organization" required /></label>
+        <label>Cidade<input name="cidade" type="text" autocomplete="address-level2" placeholder="Belo Horizonte" required /></label>
+        <label>Seu nome<input name="nome" type="text" autocomplete="name" required /></label>
+        <label>WhatsApp<input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="(31) 9 0000-0000" required /></label>
+        <label class="cheio">Hoje, como a loja registra a compra de usados?
+          <select name="registro">
+            <option>Caderno ou planilha</option>
+            <option>Fotos e conversas no WhatsApp</option>
+            <option>No sistema da loja</option>
+            <option>Não registra</option>
+          </select>
+        </label>
+        <div class="acoes cheio">
+          <button class="btn btn-tinta" type="submit">Quero ser loja fundadora</button>
+          <span class="sec">Protótipo: nenhum dado sai desta página.</span>
+        </div>
+        <p class="retorno cheio" id="retorno" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="perguntas" class="perguntas">
+    <div class="wrap">
+      <h2>Perguntas que aparecem no balcão.</h2>
+      <div class="lista">
+        <details>
+          <summary>O Cartório do Celular é um órgão público ou um cartório oficial?</summary>
+          <p>Não. É um serviço privado de registro de procedência, mantido pelas próprias lojas e pelos donos dos aparelhos. O nome é uma analogia: é a transferência veicular, só que para celular.</p>
+        </details>
+        <details>
+          <summary>E se eu não souber o IMEI na hora da compra?</summary>
+          <p>A compra fica registrada e o elo nasce como "completar IMEI". Para ver o número, disque *#06# no aparelho ou procure em Ajustes.</p>
+        </details>
+        <details>
+          <summary>O que acontece quando um aparelho tem ocorrência registrada?</summary>
+          <p>Nenhuma transferência se conclui enquanto a ocorrência estiver ativa, e o aviso aparece ao ler o IMEI em qualquer loja. O passaporte diz que consta a declaração do titular — não acusa ninguém.</p>
+        </details>
+        <details>
+          <summary>Preciso usar o ERP ou o CRM da Sheik para ter o Cartório?</summary>
+          <p>Não. O Cartório funciona sozinho, com PDV e notas próprios, e o banco de dados é separado. Quem já usa o Sheik Company ERP pode receber a venda concluída nele para emitir a NF-e.</p>
+        </details>
+        <details>
+          <summary>Quanto custa?</summary>
+          <p>Os planos estão sendo fechados com as lojas fundadoras. Deixe seu interesse acima e a proposta chega antes de a lei entrar em vigor.</p>
+        </details>
+        <details>
+          <summary>Onde ficam os meus dados?</summary>
+          <p>CPF e documentos ficam cifrados, com acesso registrado nome a nome. Fotos de documento e selfie são apagadas no fim do prazo legal de guarda; fica só a impressão digital do arquivo, para provar que ele existiu. A página pública do aparelho nunca mostra nome completo nem CPF.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="marca" href="#inicio">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="3" y="7" width="13" height="21" rx="4" transform="rotate(-18 9.5 17.5)" stroke="#2F3B9C" stroke-width="3"/><rect x="16" y="4" width="13" height="21" rx="4" transform="rotate(-18 22.5 14.5)" stroke="#B34E27" stroke-width="3"/></svg>
+        <span class="nome">cartório <b>do</b> celular</span>
+      </a>
+      <p style="margin-top:14px;max-width:40ch">Registro de procedência de celulares usados. Passou de mão, passa no Cartório.</p>
+      <span class="demo-aviso">Protótipo: dados sintéticos, nenhum CPF real</span>
+    </div>
+    <div>
+      <ul>
+        <li><a href="../">Demonstração do sistema</a></li>
+        <li><a href="../pf">Meus aparelhos</a></li>
+        <li><a href="../passaporte">Consultar um aparelho</a></li>
+        <li><a href="../loja/nova">Cadastrar uma loja</a></li>
+      </ul>
+    </div>
+    <div>
+      <ul>
+        <li><a href="#como-funciona">Como funciona</a></li>
+        <li><a href="#lei">Lei 12.144/2026 (BH)</a></li>
+        <li><a href="#perguntas">Perguntas frequentes</a></li>
+        <li><a href="https://github.com/masrinfor-dot/cartorio-do-celular">Código no GitHub</a></li>
+      </ul>
+    </div>
+    <div class="legal">
+      <p>O Cartório do Celular é um serviço privado. Não é cartório extrajudicial nem órgão público.</p>
+      <p>© 2026 Cartório do Celular</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Consulta: manda o IMEI (só dígitos) para a página pública do passaporte no sistema.
+  document.getElementById("consultar").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var digitos = (document.getElementById("imei").value || "").replace(/\D/g, "");
+    var destino = this.getAttribute("action");
+    window.location.href = digitos ? destino + "/" + digitos : destino;
+  });
+
+  // Fecha o menu ao escolher um item.
+  document.querySelectorAll(".menu-lista a").forEach(function (a) {
+    a.addEventListener("click", function () { document.querySelector(".menu").removeAttribute("open"); });
+  });
+
+  // Formulário de lojas fundadoras — protótipo: nada é enviado.
+  document.getElementById("form-fundadora").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = this, retorno = document.getElementById("retorno"), faltando = [];
+    ["loja", "cidade", "nome", "whatsapp"].forEach(function (n) { if (!f.elements[n].value.trim()) faltando.push(f.elements[n]); });
+    if (faltando.length) {
+      faltando[0].focus();
+      retorno.hidden = false;
+      retorno.textContent = "Faltou preencher: " + faltando.map(function (el) { return el.closest("label").firstChild.textContent.trim().toLowerCase(); }).join(", ") + ".";
+      return;
+    }
+    retorno.hidden = false;
+    retorno.innerHTML = "Interesse anotado para <strong>" + f.elements.loja.value.replace(/[<>&]/g, "") + "</strong>, em " + f.elements.cidade.value.replace(/[<>&]/g, "") + "." +
+      "<small>Este é um protótipo: nenhum dado foi enviado. Na versão final, o pedido chega à equipe do Cartório e a resposta vem pelo WhatsApp informado.</small>";
+    f.querySelector("button[type=submit]").disabled = true;
+  });
+</script>
+</body>
+</html>

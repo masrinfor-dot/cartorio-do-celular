@@ -67,6 +67,15 @@ Adaptado da Carteira Digital de Trânsito (ver `benchmark-carteira-digital-trans
 - **Comunicar venda**: declaração unilateral do vendedor (entra no passaporte como *declarado*, com a data); se o comprador aceitar depois, vira transferência completa — sozinha.
 - **Registrar ocorrência** (furto/roubo/perda, com nº do B.O.): aparece no passaporte público e no balcão da loja ao ler o IMEI, e **nenhuma transferência conclui** enquanto estiver ativa. Linguagem declarativa; aponta para o Celular Seguro como canal oficial.
 
+### Site público (v0.7)
+
+A página institucional está em `public/site/index.html` — HTML único, sem build, com a identidade visual v1 (Tinta/Lacre/Papel, Bricolage + Hanken + Plex Mono). O Vite copia `public/` para `dist/`, então ela sai junto com o app:
+
+- Teste: <https://masrinfor-dot.github.io/cartorio-do-celular/site/>
+- Local: `npm run dev` e abra <http://localhost:5173/site/>
+
+Os links do site apontam para o app por caminho relativo (`../`, `../pf`, `../passaporte`, `../entrar`), então funcionam em qualquer host que sirva o `dist/` inteiro. O formulário de lojas fundadoras **não envia nada** (protótipo) — quando houver backend, basta trocar o `submit` no `<script>` do fim do arquivo.
+
 ## 2. Estrutura
 
 ```
